@@ -44,3 +44,7 @@ test("QR helper safely encodes part numbers", () => {
   const url = buildPermanentProductUrl("https://visual.company.com", "ABC 123/4");
   assert.equal(url, "https://visual.company.com/p/ABC%20123%2F4");
 });
+
+test("engineering can correct and resubmit a rejected revision", () => {
+  assert.equal(canTransitionRevision("engineering", "rejected", "awaiting_approval"), true);
+});

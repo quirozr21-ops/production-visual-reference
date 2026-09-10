@@ -31,15 +31,15 @@ Updated: 2026-09-10
 
 - [x] Product create UI
 - [ ] Product edit UI
-- [ ] Revision authoring UI
-- [ ] Image upload UI
-- [ ] Quality approval queue actions
-- [ ] Historical revision viewer
+- [x] Revision authoring UI
+- [x] Image upload UI
+- [x] Quality approval queue actions
+- [x] Historical revision viewer
 - [ ] user/role administration
 - [ ] generated Supabase TypeScript DB types
 - [ ] production identity-provider/SSO configuration
 - [ ] end-to-end browser tests
-- [ ] CI workflow
+- [x] CI workflow
 - [ ] deployment configuration
 
 ## Architectural decisions
@@ -53,6 +53,18 @@ Updated: 2026-09-10
 
 ## Known issues
 
-- Dependencies could not be downloaded in this build environment, so a full Next.js `npm run build` was not executed here.
+- Logic tests pass locally (13/13). Dependency installation timed out in this build environment, so full lint/build validation is delegated to the GitHub Actions CI workflow.
 - Supabase project credentials are not configured.
-- The admin dashboard is read-only in this first slice.
+- Supabase project credentials are still required before live controlled records and private images can be exercised end-to-end.
+
+## Phase 2 implementation — 2026-09-10
+
+- Added controlled product revision workspace and revision creation.
+- Added editable ECN and critical-quality-note fields for Draft/Rejected revisions.
+- Added private categorized image upload with server-side type/size validation.
+- Added Draft/Rejected image removal while preventing deletion of approved/obsolete evidence.
+- Added Quality approval queue and approve/reject actions backed by transactional PostgreSQL functions.
+- Added full historical revision viewer for controlled roles.
+- Resubmission now resets image disposition state to Draft for a fresh Quality review.
+- Added dashboard product navigation and role-aware controlled actions.
+- Added tests for rejected-revision resubmission, image categories, MIME types, filename sanitization, and upload-size invariant.

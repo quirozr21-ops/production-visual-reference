@@ -34,7 +34,8 @@ export function canTransitionRevision(
   if (role === "engineering") {
     return (
       (from === "draft" && to === "awaiting_approval") ||
-      (from === "rejected" && to === "draft")
+      (from === "rejected" && to === "draft") ||
+      (from === "rejected" && to === "awaiting_approval")
     );
   }
 
