@@ -180,3 +180,145 @@ p { line-height: 1.5; }
   .meta dd { margin-bottom: 8px; }
   .topbar-inner { width: calc(100% - 16px); }
 }
+
+.eyebrow {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 850;
+  letter-spacing: .1em;
+}
+
+.toolbar {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.action-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.button.small {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: .92rem;
+}
+
+.status.compact {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 10px;
+  border-width: 1px;
+  font-size: .82rem;
+  text-transform: uppercase;
+}
+
+.status.neutral {
+  background: #eef1f4;
+  color: #4a5562;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.data-table th {
+  color: var(--muted);
+  font-size: .83rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 110px;
+  font-family: inherit;
+}
+
+.file-input {
+  padding: 10px;
+}
+
+.pill {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #edf1f5;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: .88rem;
+}
+
+.note-box {
+  margin-top: 14px;
+  border-left: 4px solid var(--brand);
+  background: #eef4fa;
+  padding: 12px 14px;
+}
+
+.note-box p:last-child { margin-bottom: 0; }
+
+.control-panel {
+  border-width: 2px;
+}
+
+.two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.approve-button { background: #176b36; }
+.reject-button { background: #9c1c24; }
+
+.text-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+.danger-text { color: var(--danger-text); }
+
+.timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+@media (max-width: 720px) {
+  .two-column { grid-template-columns: 1fr; }
+  .timeline-item { grid-template-columns: 1fr; }
+  .toolbar > .button { width: 100%; }
+}
