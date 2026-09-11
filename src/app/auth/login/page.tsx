@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { login, signup } from "./actions";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; next?: string; created?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; created?: string; passwordUpdated?: string }>;
 }) {
   const params = await searchParams;
 
@@ -16,6 +17,11 @@ export default async function LoginPage({
         {params.created ? (
           <div className="status success">
             Account request created. Check your email and confirm the address before signing in.
+          </div>
+        ) : null}
+        {params.passwordUpdated ? (
+          <div className="status success">
+            Password updated successfully. Sign in with your new password.
           </div>
         ) : null}
         <form className="search-form" style={{ marginTop: 18 }}>
@@ -31,6 +37,9 @@ export default async function LoginPage({
           <button className="button" formAction={login}>Sign in</button>
           <button className="button secondary" formAction={signup}>Create first-time account</button>
         </form>
+        <p style={{ marginTop: 14 }}>
+          <Link href="/auth/forgot-password">Forgot your password?</Link>
+        </p>
         <p className="muted" style={{ marginTop: 14 }}>
           New accounts receive the lowest application permission by default unless a one-time administrator bootstrap has been prepared.
         </p>
