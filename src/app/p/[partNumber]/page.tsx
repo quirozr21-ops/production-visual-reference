@@ -16,7 +16,7 @@ export default async function ProductReferencePage({
   await requireUser(`/p/${encodeURIComponent(decoded)}`);
 
   const product = await getProductReference(decoded);
-  if (!product) notFound();
+  if (!product || product.status !== "active") notFound();
 
   const state = getReferenceState(
     product.current_engineering_revision,
@@ -34,15 +34,15 @@ export default async function ProductReferencePage({
       />
 
       <section className="card">
+        <div className="eyebrow">PRODUCTION VISUAL REFERENCE</div>
         <div className="muted">PART NUMBER</div>
         <h1>{product.part_number}</h1>
         <h2>{product.description}</h2>
         <dl className="meta">
-          <dt>Engineering Rev</dt><dd>{product.current_engineering_revision ?? "Not set"}</dd>
-          <dt>Approved Visual Rev</dt><dd>{product.current_approved_visual_revision ?? "None"}</dd>
-          <dt>Product Family</dt><dd>{product.product_family ?? "—"}</dd>
-          <dt>ECN</dt><dd>{product.ecn_number ?? "—"}</dd>
-          <dt>Work Instruction</dt><dd>{product.work_instruction_number ?? "—"}</dd>
+          <dt>Engineering Revision</dt>
+          <dd>{product.current_engineering_revision ?? "Not set"}</dd>
+          <dt>Approved Visual Revision</dt>
+          <dd>{product.current_approved_visual_revision ?? "None"}</dd>
         </dl>
       </section>
 
@@ -55,22 +55,17 @@ export default async function ProductReferencePage({
 
       <section className="card">
         <h2>Approved Visual References</h2>
-        <ReferenceGallery assets={product.assets} />
-      </section>
-
-      <section className="card">
-        <h2>QR Label</h2>
-        <p className="muted">This permanent QR resolves the current approved revision when scanned.</p>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`/api/qr/${encodeURIComponent(product.part_number)}`}
-          alt={`QR code for ${product.part_number}`}
-          style={{ width: 220, maxWidth: "100%" }}
-        />
+        {product.current_approved_visual_revision ? (
+          <ReferenceGallery assets={product.assets} />
+        ) : (
+          <div className="status danger">
+            No approved visual reference is available. Follow released engineering documentation.
+          </div>
+        )}
       </section>
 
       <section className="disclaimer">
-        PRODUCTION AID — Verify all requirements against released engineering documentation.
+        PRODUCTION AID — Released engineering documentation remains authoritative.
       </section>
     </main>
   );
