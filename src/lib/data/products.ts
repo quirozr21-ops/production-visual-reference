@@ -32,6 +32,8 @@ export async function getProductReference(partNumber: string): Promise<ProductRe
   const supabase = await createClient();
   const normalized = partNumber.trim();
 
+  // This loader is also used by the public QR route. Request only fields that are
+  // intentionally exposed in the Production view.
   const { data: product, error } = await supabase
     .from("products")
     .select(`
@@ -40,16 +42,13 @@ export async function getProductReference(partNumber: string): Promise<ProductRe
       description,
       status,
       current_engineering_revision,
-      current_approved_visual_revision,
-      work_instruction_number,
-      product_families(name)
+      current_approved_visual_revision
     `)
     .ilike("part_number", normalized)
     .single();
 
   if (error || !product) return null;
 
-  let ecnNumber: string | null = null;
   let criticalNotes: string | null = null;
   let approvedAt: string | null = null;
   let assets: ProductReference["assets"] = [];
@@ -57,14 +56,13 @@ export async function getProductReference(partNumber: string): Promise<ProductRe
   if (product.current_approved_visual_revision) {
     const { data: revision } = await supabase
       .from("product_revisions")
-      .select("id, ecn_number, critical_quality_notes, approved_at")
+      .select("id, critical_quality_notes, approved_at")
       .eq("product_id", product.id)
       .eq("revision_code", product.current_approved_visual_revision)
       .eq("status", "approved")
       .single();
 
     if (revision) {
-      ecnNumber = revision.ecn_number;
       criticalNotes = revision.critical_quality_notes;
       approvedAt = revision.approved_at;
 
@@ -82,19 +80,15 @@ export async function getProductReference(partNumber: string): Promise<ProductRe
     }
   }
 
-  const family = Array.isArray(product.product_families)
-    ? product.product_families[0]?.name ?? null
-    : (product.product_families as { name?: string } | null)?.name ?? null;
-
   return {
     id: product.id,
     part_number: product.part_number,
     description: product.description,
-    product_family: family,
+    product_family: null,
     current_engineering_revision: product.current_engineering_revision,
     current_approved_visual_revision: product.current_approved_visual_revision,
-    ecn_number: ecnNumber,
-    work_instruction_number: product.work_instruction_number,
+    ecn_number: null,
+    work_instruction_number: null,
     status: product.status,
     critical_quality_notes: criticalNotes,
     approved_at: approvedAt,
