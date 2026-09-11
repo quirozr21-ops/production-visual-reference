@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReferenceGallery } from "@/components/reference-gallery";
 import { StatusBanner } from "@/components/status-banner";
-import { requireUser } from "@/lib/auth";
 import { getProductReference } from "@/lib/data/products";
 import { getReferenceState } from "@/lib/reference-state";
 
@@ -13,7 +11,6 @@ export default async function ProductReferencePage({
 }) {
   const { partNumber } = await params;
   const decoded = decodeURIComponent(partNumber);
-  await requireUser(`/p/${encodeURIComponent(decoded)}`);
 
   const product = await getProductReference(decoded);
   if (!product || product.status !== "active") notFound();
@@ -25,8 +22,6 @@ export default async function ProductReferencePage({
 
   return (
     <main className="shell stack">
-      <Link href="/">← Search another product</Link>
-
       <StatusBanner
         state={state}
         engineeringRevision={product.current_engineering_revision}
