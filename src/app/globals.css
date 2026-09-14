@@ -317,8 +317,34 @@ p { line-height: 1.5; }
   padding: 14px;
 }
 
+.qr-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+}
+
+.qr-preview {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  background: #fff;
+}
+
+.qr-preview img {
+  display: block;
+  width: min(220px, 100%);
+  height: auto;
+}
+
 @media (max-width: 720px) {
   .two-column { grid-template-columns: 1fr; }
   .timeline-item { grid-template-columns: 1fr; }
   .toolbar > .button { width: 100%; }
+  .qr-section { grid-template-columns: 1fr; }
+  .qr-preview { justify-self: stretch; }
 }
