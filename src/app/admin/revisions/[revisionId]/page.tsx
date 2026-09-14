@@ -33,6 +33,10 @@ export default async function RevisionPage({
   const canQuality = user.role === "quality" || user.role === "administrator";
   const editable = canAuthor && ["draft", "rejected"].includes(revision.status);
   const pending = revision.status === "awaiting_approval";
+  const isCurrentApproved =
+    revision.status === "approved" &&
+    revision.product.current_approved_visual_revision === revision.revision_code;
+  const encodedPartNumber = encodeURIComponent(revision.product.part_number);
   const message = typeof query.error === "string"
     ? { kind: "danger", text: query.error }
     : query.uploaded
@@ -75,6 +79,34 @@ export default async function RevisionPage({
         {message ? <div className={`status ${message.kind}`} style={{ marginTop: 16 }}>{message.text}</div> : null}
         {isDemoMode ? <div className="status warning" style={{ marginTop: 16 }}>Demo mode is read-only; workflow buttons are disabled.</div> : null}
       </section>
+
+      {isCurrentApproved ? (
+        <section className="card">
+          <div className="qr-section">
+            <div className="stack" style={{ gap: 10 }}>
+              <div className="eyebrow">PERMANENT PRODUCT QR</div>
+              <h2>Production QR Code</h2>
+              <p className="muted" style={{ margin: 0 }}>
+                Scan this code to open the current approved Production visual reference. Keep the same QR on the product; when a future visual revision is approved, this code will automatically show the new approved revision.
+              </p>
+              <div className="action-row" style={{ marginTop: 6 }}>
+                <a className="button secondary" href={`/api/qr/${encodedPartNumber}`} target="_blank" rel="noreferrer">
+                  Open QR Code
+                </a>
+                <Link className="button secondary" href={`/p/${encodedPartNumber}`} target="_blank">
+                  Preview Public Production View
+                </Link>
+              </div>
+            </div>
+            <div className="qr-preview">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/api/qr/${encodedPartNumber}`} alt={`Permanent QR code for ${revision.product.part_number}`} />
+              <strong>{revision.product.part_number}</strong>
+              <span className="muted">Scan for approved visual reference</span>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="card">
         <h2>Revision Information</h2>
