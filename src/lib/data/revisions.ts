@@ -23,6 +23,7 @@ export type ControlledProduct = {
   current_engineering_revision: string | null;
   current_approved_visual_revision: string | null;
   work_instruction_number: string | null;
+  final_inspection_part_number: string | null;
   status: string;
   revisions: RevisionSummary[];
 };
@@ -101,6 +102,7 @@ export async function getControlledProduct(productId: string): Promise<Controlle
       current_engineering_revision: "6",
       current_approved_visual_revision: "5",
       work_instruction_number: "0010-DEMO",
+      final_inspection_part_number: "0190-DEMO",
       status: "active",
       revisions: demoRevisions,
     };
@@ -109,7 +111,7 @@ export async function getControlledProduct(productId: string): Promise<Controlle
   const supabase = await createClient();
   const { data: product, error } = await supabase
     .from("products")
-    .select("id,part_number,description,current_engineering_revision,current_approved_visual_revision,work_instruction_number,status")
+    .select("id,part_number,description,current_engineering_revision,current_approved_visual_revision,work_instruction_number,final_inspection_part_number,status")
     .eq("id", productId)
     .single();
 
