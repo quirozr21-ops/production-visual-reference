@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Asset = {
   id: string;
@@ -11,6 +11,19 @@ type Asset = {
 
 export function ReferenceGallery({ assets }: { assets: Asset[] }) {
   const [selected, setSelected] = useState<Asset | null>(null);
+  const [category, setCategory] = useState("all");
+
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const asset of assets) {
+      counts.set(asset.category, (counts.get(asset.category) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [assets]);
+
+  const visibleAssets = category === "all"
+    ? assets
+    : assets.filter((asset) => asset.category === category);
 
   useEffect(() => {
     if (!selected) return;
@@ -35,9 +48,28 @@ export function ReferenceGallery({ assets }: { assets: Asset[] }) {
 
   return (
     <>
-      <p className="muted photo-help">Tap any photo to enlarge it.</p>
+      <div className="search-form" style={{ marginBottom: 14 }}>
+        <label>
+          Photo Category
+          <select
+            className="input"
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+          >
+            <option value="all">All Photos ({assets.length})</option>
+            {categories.map(([name, count]) => (
+              <option key={name} value={name}>{name} ({count})</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <p className="muted photo-help">
+        Showing {visibleAssets.length} {visibleAssets.length === 1 ? "photo" : "photos"}. Tap any photo to enlarge it.
+      </p>
+
       <div className="gallery">
-        {assets.map((asset) => (
+        {visibleAssets.map((asset) => (
           <article className="photo-card" key={asset.id}>
             {asset.image_url ? (
               <button
