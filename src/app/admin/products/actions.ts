@@ -16,6 +16,7 @@ export async function createProduct(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   const engineeringRevision = String(formData.get("engineeringRevision") ?? "").trim();
   const workInstruction = String(formData.get("workInstruction") ?? "").trim();
+  const finalInspectionPartNumber = String(formData.get("finalInspectionPartNumber") ?? "").trim();
 
   if (!partNumber || !description || !engineeringRevision) {
     redirect("/admin/products/new?error=Part%20number%2C%20description%2C%20and%20engineering%20revision%20are%20required.");
@@ -27,6 +28,7 @@ export async function createProduct(formData: FormData) {
     description,
     current_engineering_revision: engineeringRevision,
     work_instruction_number: workInstruction || null,
+    final_inspection_part_number: finalInspectionPartNumber || null,
     created_by: user.id,
   });
 
