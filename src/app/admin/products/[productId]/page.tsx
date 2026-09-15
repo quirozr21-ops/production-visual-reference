@@ -39,6 +39,7 @@ export default async function ControlledProductPage({
           <dt>Engineering Rev</dt><dd>{product.current_engineering_revision ?? "Not set"}</dd>
           <dt>Approved Visual Rev</dt><dd>{product.current_approved_visual_revision ?? "None"}</dd>
           <dt>Work Instruction</dt><dd>{product.work_instruction_number ?? "—"}</dd>
+          <dt>Final Inspection Part Number</dt><dd>{product.final_inspection_part_number ?? "—"}</dd>
           <dt>Status</dt><dd>{product.status}</dd>
         </dl>
       </section>
