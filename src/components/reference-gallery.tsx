@@ -72,17 +72,22 @@ export function ReferenceGallery({ assets }: { assets: Asset[] }) {
         {visibleAssets.map((asset) => (
           <article className="photo-card" key={asset.id}>
             {asset.image_url ? (
-              <button
+              <a
                 className="photo-enlarge-button"
-                type="button"
-                onClick={() => setSelected(asset)}
+                href={asset.image_url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => {
+                  event.preventDefault();
+                  setSelected(asset);
+                }}
                 aria-label={`Enlarge ${asset.category} reference photo`}
               >
                 {/* Approved images are served through the controlled reference-image route. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={asset.image_url} alt={`${asset.category}: ${asset.description ?? "reference photo"}`} />
                 <span className="photo-enlarge-hint" aria-hidden="true">Tap to enlarge</span>
-              </button>
+              </a>
             ) : (
               <div className="photo-placeholder">{asset.category}<br />Photo placeholder</div>
             )}
