@@ -45,6 +45,10 @@ export default async function NewProductPage({
             Work Instruction Number
             <input className="input" name="workInstruction" placeholder="0010-xxxxx" />
           </label>
+          <label>
+            Final Inspection Part Number
+            <input className="input" name="finalInspectionPartNumber" placeholder="0190-xxxxx" />
+          </label>
           <button className="button" type="submit" disabled={isDemoMode}>
             Create Product
           </button>
