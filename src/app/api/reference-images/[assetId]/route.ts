@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { isDemoMode } from "@/lib/config";
+import {
+  hasServerImageStorage,
+  imageContentType,
+  readServerImage,
+} from "@/lib/server-image-storage";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   _request: Request,
@@ -25,8 +30,26 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Storage RLS re-checks the same approved/current relationship before a
-  // short-lived signed URL is created.
+  // During the migration period, approved images are served from the company
+  // server first. Existing Supabase Storage images remain available as a fallback.
+  if (hasServerImageStorage()) {
+    try {
+      const bytes = await readServerImage(asset.storage_path);
+      if (bytes) {
+        return new NextResponse(new Uint8Array(bytes), {
+          headers: {
+            "Content-Type": imageContentType(asset.storage_path),
+            "Cache-Control": "public, max-age=30, s-maxage=30",
+            "X-Content-Type-Options": "nosniff",
+          },
+        });
+      }
+    } catch (storageError) {
+      console.error("Company server image read failed", storageError);
+    }
+  }
+
+  // Existing cloud images continue to work until they are migrated and verified.
   const { data, error: signError } = await supabase.storage
     .from("visual-references")
     .createSignedUrl(asset.storage_path, 60);
