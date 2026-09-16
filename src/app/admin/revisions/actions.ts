@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { isDemoMode } from "@/lib/config";
+import {
+  deleteServerImage,
+  hasServerImageStorage,
+  writeServerImage,
+} from "@/lib/server-image-storage";
 import { createClient } from "@/lib/supabase/server";
 import {
   isAllowedImageType,
@@ -118,13 +123,24 @@ export async function uploadVisualAsset(formData: FormData) {
   if (metadataError || !asset) redirectError(path, metadataError?.message ?? "Could not create image record.");
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const { error: uploadError } = await supabase.storage
-    .from("visual-references")
-    .upload(storagePath, bytes, { contentType: file.type, upsert: false });
 
-  if (uploadError) {
-    await supabase.from("visual_assets").delete().eq("id", asset.id);
-    redirectError(path, uploadError.message);
+  if (hasServerImageStorage()) {
+    try {
+      await writeServerImage(storagePath, bytes);
+    } catch (storageError) {
+      console.error("Company server image upload failed", storageError);
+      await supabase.from("visual_assets").delete().eq("id", asset.id);
+      redirectError(path, "Could not save the image to the company server.");
+    }
+  } else {
+    const { error: uploadError } = await supabase.storage
+      .from("visual-references")
+      .upload(storagePath, bytes, { contentType: file.type, upsert: false });
+
+    if (uploadError) {
+      await supabase.from("visual_assets").delete().eq("id", asset.id);
+      redirectError(path, uploadError.message);
+    }
   }
 
   revalidatePath(path);
@@ -153,8 +169,18 @@ export async function deleteVisualAsset(formData: FormData) {
   const status = Array.isArray(relation) ? relation[0]?.status : relation?.status;
   if (!status || !["draft", "rejected"].includes(status)) redirectError(path, "Only Draft or Rejected revision images can be removed.");
 
+  let removedFromServer = false;
+  if (hasServerImageStorage()) {
+    try {
+      removedFromServer = await deleteServerImage(asset.storage_path);
+    } catch (storageError) {
+      console.error("Company server image delete failed", storageError);
+      redirectError(path, "Could not remove the image from the company server.");
+    }
+  }
+
   const { error: storageError } = await supabase.storage.from("visual-references").remove([asset.storage_path]);
-  if (storageError) redirectError(path, storageError.message);
+  if (storageError && !removedFromServer) redirectError(path, storageError.message);
 
   const { error: metadataError } = await supabase.from("visual_assets").delete().eq("id", assetId);
   if (metadataError) redirectError(path, metadataError.message);
