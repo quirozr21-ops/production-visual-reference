@@ -1,11 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ImageLightbox } from "@/components/image-lightbox";
-import { StatusBadge } from "@/components/status-badge";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { isDemoMode } from "@/lib/config";
-import { formatPhotoCategory } from "@/lib/photo-category";
-import { createClient } from "@/lib/supabase/server";
+import { getRevisionDetail } from "@/lib/data/revisions";
 import { PHOTO_CATEGORIES } from "@/lib/visual-reference";
 import {
   approveVisualRevision,
@@ -16,101 +13,105 @@ import {
   uploadVisualAsset,
 } from "../actions";
 
-type PageProps = {
+function workflowLabel(status: string) {
+  return status.replaceAll("_", " ").toUpperCase();
+}
+
+export default async function RevisionPage({
+  params,
+  searchParams,
+}: {
   params: Promise<{ revisionId: string }>;
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-};
-
-export default async function RevisionPage({ params, searchParams }: PageProps) {
-  const user = await requireUser();
-  const { revisionId } = await params;
-  const query = searchParams ? await searchParams : {};
-  const supabase = await createClient();
-
-  const { data: revision } = await supabase
-    .from("product_revisions")
-    .select("id,revision_code,ecn_number,critical_quality_notes,status,approval_date,rejection_reason,created_at,product_id,products(part_number,description,current_engineering_revision,current_approved_visual_revision_id)")
-    .eq("id", revisionId)
-    .single();
-
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const user = await requireRole(["quality", "engineering", "document_control", "administrator"]);
+  const [{ revisionId }, query] = await Promise.all([params, searchParams]);
+  const revision = await getRevisionDetail(revisionId);
   if (!revision) notFound();
 
-  const { data: assets = [] } = await supabase
-    .from("visual_assets")
-    .select("id,category,description,sort_order,approval_status,storage_path")
-    .eq("revision_id", revision.id)
-    .order("sort_order", { ascending: true });
-
-  const role = user.profile.app_role;
-  const canEngineer = role === "engineering" || role === "administrator";
-  const canQuality = role === "quality" || role === "administrator";
-  const editable = canEngineer && ["draft", "rejected"].includes(revision.status);
-  const pending = revision.status === "pending_quality";
-  const productRelation = revision.products as unknown as
-    | { part_number: string; description: string; current_engineering_revision: string | null; current_approved_visual_revision_id: string | null }
-    | Array<{ part_number: string; description: string; current_engineering_revision: string | null; current_approved_visual_revision_id: string | null }>;
-  const product = Array.isArray(productRelation) ? productRelation[0] : productRelation;
-  if (!product) notFound();
-
-  const assetCount = assets?.length ?? 0;
-  const currentApproved = product.current_approved_visual_revision_id === revision.id;
-  const engineeringMatch = product.current_engineering_revision === revision.revision_code;
-  const successMessage = query.uploaded
-    ? "Reference image uploaded."
-    : query.saved
-      ? "Revision metadata saved."
-      : query.submitted
-        ? "Revision submitted to Quality."
-        : query.approved
-          ? "Visual revision approved."
-          : query.rejected
-            ? "Revision rejected for correction."
-            : null;
-  const errorMessage = typeof query.error === "string" ? query.error : null;
+  const canAuthor = user.role === "engineering" || user.role === "administrator";
+  const canQuality = user.role === "quality" || user.role === "administrator";
+  const editable = canAuthor && ["draft", "rejected"].includes(revision.status);
+  const pending = revision.status === "awaiting_approval";
+  const isCurrentApproved =
+    revision.status === "approved" &&
+    revision.product.current_approved_visual_revision === revision.revision_code;
+  const encodedPartNumber = encodeURIComponent(revision.product.part_number);
+  const message = typeof query.error === "string"
+    ? { kind: "danger", text: query.error }
+    : query.uploaded
+      ? { kind: "success", text: "Reference image uploaded." }
+      : query.saved
+        ? { kind: "success", text: "Revision details saved." }
+        : query.submitted
+          ? { kind: "success", text: "Revision submitted to Quality." }
+          : query.approved
+            ? { kind: "success", text: "Quality approved this visual revision." }
+            : query.rejected
+              ? { kind: "warning", text: "Quality rejected this revision for correction." }
+              : null;
 
   return (
-    <main className="page-shell stack-lg">
-      <div className="page-header">
-        <div>
-          <div className="eyebrow">CONTROLLED VISUAL REVISION</div>
-          <h1>{product.part_number} — Visual Rev {revision.revision_code}</h1>
-          <p>{product.description}</p>
-        </div>
-        <div className="header-actions">
-          <StatusBadge status={revision.status} />
-          <Link className="button secondary" href={`/admin/products/${revision.product_id}`}>Back to Product</Link>
-        </div>
+    <main className="shell stack">
+      <div className="toolbar">
+        <Link href={`/admin/products/${revision.product.id}`}>← {revision.product.part_number}</Link>
+        <Link href={`/admin/products/${revision.product.id}/history`}>Revision History</Link>
       </div>
 
-      {successMessage ? <div className="notice success">{successMessage}</div> : null}
-      {errorMessage ? <div className="notice error">{errorMessage}</div> : null}
-
       <section className="card">
-        <div className="section-title-row">
+        <div className="toolbar">
           <div>
-            <div className="eyebrow">REVISION CONTROL</div>
-            <h2>Engineering vs. Visual</h2>
+            <div className="eyebrow">CONTROLLED VISUAL REVISION</div>
+            <h1>{revision.product.part_number} — Rev {revision.revision_code}</h1>
+            <h2>{revision.product.description}</h2>
           </div>
-          <StatusBadge status={revision.status} />
+          <div className={`status compact ${revision.status === "approved" ? "success" : revision.status === "rejected" ? "danger" : revision.status === "awaiting_approval" ? "warning" : "neutral"}`}>
+            {workflowLabel(revision.status)}
+          </div>
         </div>
-        {currentApproved && engineeringMatch ? (
-          <div className="revision-banner revision-match">CURRENT APPROVED VISUAL REFERENCE</div>
-        ) : currentApproved ? (
-          <div className="revision-banner revision-mismatch">VISUAL REFERENCE REVISION MISMATCH</div>
-        ) : null}
-        <div className="detail-grid">
-          <div><strong>Engineering Revision</strong><span>{product.current_engineering_revision || "—"}</span></div>
-          <div><strong>Visual Revision</strong><span>{revision.revision_code}</span></div>
-          <div><strong>ECN</strong><span>{revision.ecn_number || "—"}</span></div>
-          <div><strong>Approval Date</strong><span>{revision.approval_date ? new Date(revision.approval_date).toLocaleString() : "—"}</span></div>
-          <div><strong>Reference Images</strong><span>{assetCount}</span></div>
-        </div>
+        <dl className="meta" style={{ marginTop: 18 }}>
+          <dt>Current Engineering Rev</dt><dd>{revision.product.current_engineering_revision ?? "—"}</dd>
+          <dt>Current Approved Visual</dt><dd>{revision.product.current_approved_visual_revision ?? "None"}</dd>
+          <dt>ECN</dt><dd>{revision.ecn_number ?? "—"}</dd>
+          <dt>Photos</dt><dd>{revision.asset_count}</dd>
+        </dl>
+        {revision.rejection_reason ? <div className="status danger" style={{ marginTop: 16 }}>Rejection reason: {revision.rejection_reason}</div> : null}
+        {message ? <div className={`status ${message.kind}`} style={{ marginTop: 16 }}>{message.text}</div> : null}
+        {isDemoMode ? <div className="status warning" style={{ marginTop: 16 }}>Demo mode is read-only; workflow buttons are disabled.</div> : null}
       </section>
 
+      {isCurrentApproved ? (
+        <section className="card">
+          <div className="qr-section">
+            <div className="stack" style={{ gap: 10 }}>
+              <div className="eyebrow">PERMANENT PRODUCT QR</div>
+              <h2>Production QR Code</h2>
+              <p className="muted" style={{ margin: 0 }}>
+                Scan this code to open the current approved Production visual reference. Keep the same QR on the product; when a future visual revision is approved, this code will automatically show the new approved revision.
+              </p>
+              <div className="action-row" style={{ marginTop: 6 }}>
+                <a className="button secondary" href={`/api/qr/${encodedPartNumber}`} target="_blank" rel="noreferrer">
+                  Open QR Code
+                </a>
+                <Link className="button secondary" href={`/p/${encodedPartNumber}`} target="_blank">
+                  Preview Public Production View
+                </Link>
+              </div>
+            </div>
+            <div className="qr-preview">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/api/qr/${encodedPartNumber}`} alt={`Permanent QR code for ${revision.product.part_number}`} />
+              <strong>{revision.product.part_number}</strong>
+              <span className="muted">Scan for approved visual reference</span>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <section className="card">
-        <h2>Critical Quality Notes</h2>
+        <h2>Revision Information</h2>
         {editable ? (
-          <form action={updateRevisionMetadata} className="stack">
+          <form action={updateRevisionMetadata} className="search-form">
             <input type="hidden" name="revisionId" value={revision.id} />
             <label>
               ECN Number
@@ -118,37 +119,34 @@ export default async function RevisionPage({ params, searchParams }: PageProps) 
             </label>
             <label>
               Critical Quality Notes
-              <textarea className="input textarea" name="criticalQualityNotes" rows={5} defaultValue={revision.critical_quality_notes ?? ""} />
+              <textarea className="input textarea" rows={5} name="criticalQualityNotes" defaultValue={revision.critical_quality_notes ?? ""} />
             </label>
-            <button className="button" type="submit" disabled={isDemoMode}>Save Revision Metadata</button>
+            <button className="button secondary" disabled={isDemoMode}>Save Revision Information</button>
           </form>
         ) : (
-          <p>{revision.critical_quality_notes || "No critical quality notes."}</p>
+          <div className="note-box">
+            <strong>Critical Quality Notes</strong>
+            <p>{revision.critical_quality_notes || "No critical quality notes recorded."}</p>
+          </div>
         )}
-        {revision.rejection_reason ? <div className="notice error"><strong>Rejection:</strong> {revision.rejection_reason}</div> : null}
       </section>
 
       <section className="card">
-        <div className="section-title-row">
-          <div>
-            <div className="eyebrow">VISUAL REFERENCES</div>
-            <h2>Revision Images</h2>
-          </div>
-          <span className="muted">{assetCount} image{assetCount === 1 ? "" : "s"}</span>
+        <div className="toolbar">
+          <div><h2>Visual Reference Images</h2><p className="muted">All images remain private and inherit controlled revision access.</p></div>
+          <span className="pill">{revision.asset_count} total</span>
         </div>
-        {!assets || assets.length === 0 ? (
-          <p className="muted">No reference images uploaded yet.</p>
-        ) : (
-          <div className="image-grid">
-            {assets.map((asset) => (
-              <article className="image-card" key={asset.id}>
-                <ImageLightbox
-                  src={`/api/reference-images/${asset.id}`}
-                  alt={`${formatPhotoCategory(asset.category)} reference image`}
-                  label={formatPhotoCategory(asset.category)}
-                />
-                <div className="image-card-body stack-sm">
-                  <div className="eyebrow">{formatPhotoCategory(asset.category)}</div>
+
+        {revision.assets.length === 0 ? <p className="muted">No images uploaded yet.</p> : (
+          <div className="gallery" style={{ marginTop: 16 }}>
+            {revision.assets.map((asset) => (
+              <article className="photo-card" key={asset.id}>
+                {asset.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={asset.image_url} alt={asset.description || `${asset.category} reference`} />
+                ) : <div className="photo-placeholder">{asset.category}</div>}
+                <div className="photo-caption stack" style={{ gap: 6 }}>
+                  <div className="photo-category">{asset.category}</div>
                   <div>{asset.description || "No description"}</div>
                   <div className="muted">Image status: {asset.approval_status}</div>
                   {editable ? (
@@ -168,7 +166,7 @@ export default async function RevisionPage({ params, searchParams }: PageProps) 
       {editable ? (
         <section className="card">
           <h2>Upload Reference Image</h2>
-          <p className="muted">Maximum 12 MB. Accepted: JPEG, PNG, WebP, HEIC, HEIF. HEIC/HEIF images are converted to JPEG automatically.</p>
+          <p className="muted">Maximum 12 MB. Accepted: JPEG, PNG, WebP, HEIC, HEIF.</p>
           <form action={uploadVisualAsset} className="search-form">
             <input type="hidden" name="revisionId" value={revision.id} />
             <label>
@@ -200,9 +198,9 @@ export default async function RevisionPage({ params, searchParams }: PageProps) 
           <p>Submitting locks Engineering editing while Quality reviews the complete revision.</p>
           <form action={submitRevisionForQuality}>
             <input type="hidden" name="revisionId" value={revision.id} />
-            <button className="button" type="submit" disabled={isDemoMode || assetCount === 0}>Submit Revision for Quality Review</button>
+            <button className="button" type="submit" disabled={isDemoMode || revision.asset_count === 0}>Submit Revision for Quality Review</button>
           </form>
-          {assetCount === 0 ? <p className="muted">At least one reference image is required before submission.</p> : null}
+          {revision.asset_count === 0 ? <p className="muted">At least one reference image is required before submission.</p> : null}
         </section>
       ) : null}
 
@@ -217,11 +215,11 @@ export default async function RevisionPage({ params, searchParams }: PageProps) 
               <button className="button approve-button" type="submit" disabled={isDemoMode}>Approve Visual Revision</button>
             </form>
             <form action={rejectVisualRevision} className="stack">
-              <input type="hidden" name="revisionId" value={revision.id} />
               <label>
                 Rejection reason
                 <textarea className="input textarea" name="reason" rows={3} required minLength={3} placeholder="Describe what Engineering must correct." />
               </label>
+              <input type="hidden" name="revisionId" value={revision.id} />
               <button className="button reject-button" type="submit" disabled={isDemoMode}>Reject for Correction</button>
             </form>
           </div>
