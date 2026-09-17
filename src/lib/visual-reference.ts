@@ -36,6 +36,13 @@ export function safeFileName(name: string) {
 
 export const MAX_REFERENCE_IMAGE_BYTES = 12 * 1024 * 1024;
 
-export function isAllowedImageType(type: string) {
-  return ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(type);
+export function isAllowedImageType(type: string, fileName = "") {
+  const normalizedType = type.trim().toLowerCase();
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+
+  if (allowedTypes.includes(normalizedType)) return true;
+
+  // Chromium/Windows can report HEIC/HEIF with an empty or generic MIME type.
+  // Allow those two formats by extension so they can reach the converter.
+  return /\.(heic|heif)$/i.test(fileName);
 }
