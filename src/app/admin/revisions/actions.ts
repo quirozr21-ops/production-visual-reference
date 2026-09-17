@@ -90,7 +90,7 @@ export async function uploadVisualAsset(formData: FormData) {
   if (isDemoMode) redirectError(path, "Demo mode is read-only.");
   if (!revisionId || !isPhotoCategory(category)) redirectError(path, "A valid revision and photo category are required.");
   if (!(file instanceof File) || file.size === 0) redirectError(path, "Choose a product reference image to upload.");
-  if (!isAllowedImageType(file.type)) redirectError(path, "Use JPEG, PNG, WebP, HEIC, or HEIF images only.");
+  if (!isAllowedImageType(file.type, file.name)) redirectError(path, "Use JPEG, PNG, WebP, HEIC, or HEIF images only.");
   if (file.size > MAX_REFERENCE_IMAGE_BYTES) redirectError(path, "Reference images must be 12 MB or smaller.");
 
   let normalizedImage: Awaited<ReturnType<typeof normalizeReferenceImage>>;
