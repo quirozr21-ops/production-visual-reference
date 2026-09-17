@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { isDemoMode } from "@/lib/config";
+import { normalizeReferenceImage } from "@/lib/image-upload-normalization";
 import {
   deleteServerImage,
   hasServerImageStorage,
@@ -92,6 +93,14 @@ export async function uploadVisualAsset(formData: FormData) {
   if (!isAllowedImageType(file.type)) redirectError(path, "Use JPEG, PNG, WebP, HEIC, or HEIF images only.");
   if (file.size > MAX_REFERENCE_IMAGE_BYTES) redirectError(path, "Reference images must be 12 MB or smaller.");
 
+  let normalizedImage: Awaited<ReturnType<typeof normalizeReferenceImage>>;
+  try {
+    normalizedImage = await normalizeReferenceImage(file);
+  } catch (conversionError) {
+    console.error("HEIC/HEIF image conversion failed", conversionError);
+    redirectError(path, "Could not convert the HEIC/HEIF image to JPEG. Try another image or convert it to JPEG first.");
+  }
+
   const sortOrder = Number.parseInt(sortOrderRaw, 10);
   const supabase = await createClient();
   const { data: revision } = await supabase
@@ -104,7 +113,7 @@ export async function uploadVisualAsset(formData: FormData) {
     redirectError(path, "Only Draft or Rejected revisions can receive new images.");
   }
 
-  const storagePath = `${revision.product_id}/${revision.id}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+  const storagePath = `${revision.product_id}/${revision.id}/${crypto.randomUUID()}-${safeFileName(normalizedImage.fileName)}`;
   const { data: asset, error: metadataError } = await supabase
     .from("visual_assets")
     .insert({
@@ -122,7 +131,7 @@ export async function uploadVisualAsset(formData: FormData) {
 
   if (metadataError || !asset) redirectError(path, metadataError?.message ?? "Could not create image record.");
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  const bytes = normalizedImage.bytes;
 
   if (hasServerImageStorage()) {
     try {
@@ -135,7 +144,7 @@ export async function uploadVisualAsset(formData: FormData) {
   } else {
     const { error: uploadError } = await supabase.storage
       .from("visual-references")
-      .upload(storagePath, bytes, { contentType: file.type, upsert: false });
+      .upload(storagePath, bytes, { contentType: normalizedImage.contentType, upsert: false });
 
     if (uploadError) {
       await supabase.from("visual_assets").delete().eq("id", asset.id);
