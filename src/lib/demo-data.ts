@@ -7,6 +7,7 @@ export const demoProduct = {
   current_approved_visual_revision: "5",
   ecn_number: "3177994",
   work_instruction_number: "0010-DEMO",
+  final_inspection_part_number: "0190-DEMO-FINAL",
   status: "active",
   critical_quality_notes:
     "Production aid only. Verify connector orientation and label placement against released engineering documentation.",
