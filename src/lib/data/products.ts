@@ -11,6 +11,7 @@ export type ProductReference = {
   current_approved_visual_revision: string | null;
   ecn_number: string | null;
   work_instruction_number: string | null;
+  final_inspection_part_number: string | null;
   status: string;
   critical_quality_notes: string | null;
   approved_at: string | null;
@@ -42,7 +43,9 @@ export async function getProductReference(partNumber: string): Promise<ProductRe
       description,
       status,
       current_engineering_revision,
-      current_approved_visual_revision
+      current_approved_visual_revision,
+      work_instruction_number,
+      final_inspection_part_number
     `)
     .ilike("part_number", normalized)
     .single();
@@ -88,7 +91,8 @@ export async function getProductReference(partNumber: string): Promise<ProductRe
     current_engineering_revision: product.current_engineering_revision,
     current_approved_visual_revision: product.current_approved_visual_revision,
     ecn_number: null,
-    work_instruction_number: null,
+    work_instruction_number: product.work_instruction_number,
+    final_inspection_part_number: product.final_inspection_part_number,
     status: product.status,
     critical_quality_notes: criticalNotes,
     approved_at: approvedAt,
