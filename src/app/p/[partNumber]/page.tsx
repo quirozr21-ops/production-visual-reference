@@ -38,6 +38,10 @@ export default async function ProductReferencePage({
           <dd>{product.current_engineering_revision ?? "Not set"}</dd>
           <dt>Approved Visual Revision</dt>
           <dd>{product.current_approved_visual_revision ?? "None"}</dd>
+          <dt>Work Instruction Number</dt>
+          <dd>{product.work_instruction_number ?? "Not set"}</dd>
+          <dt>Final Inspection Part Number</dt>
+          <dd>{product.final_inspection_part_number ?? "Not set"}</dd>
         </dl>
       </section>
 
