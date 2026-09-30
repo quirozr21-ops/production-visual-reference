@@ -42,7 +42,7 @@ export default async function NewProductPage({
             <input className="input" name="engineeringRevision" required placeholder="5" />
           </label>
           <label>
-            Work Instruction Number
+            Functional Work Instructions Part Number
             <input className="input" name="workInstruction" placeholder="0010-xxxxx" />
           </label>
           <label>
