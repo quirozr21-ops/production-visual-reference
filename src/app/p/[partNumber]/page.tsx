@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReferenceGallery } from "@/components/reference-gallery";
 import { StatusBanner } from "@/components/status-banner";
 import { getProductReference } from "@/lib/data/products";
 import { getReferenceState } from "@/lib/reference-state";
+import { findPublicPdf } from "@/lib/public-pdf-documents";
 
 export default async function ProductReferencePage({
   params,
@@ -14,6 +16,18 @@ export default async function ProductReferencePage({
 
   const product = await getProductReference(decoded);
   if (!product || product.status !== "active") notFound();
+
+  // Only make a number clickable when its released PDF is actually indexed.
+  const [workPdf, finalPdf] = product.current_approved_visual_revision
+    ? await Promise.all([
+        product.work_instruction_number
+          ? findPublicPdf("work-instruction", product.work_instruction_number)
+          : null,
+        product.final_inspection_part_number
+          ? findPublicPdf("final-inspection", product.final_inspection_part_number)
+          : null,
+      ])
+    : [null, null];
 
   const state = getReferenceState(
     product.current_engineering_revision,
@@ -39,9 +53,25 @@ export default async function ProductReferencePage({
           <dt>Approved Visual Revision</dt>
           <dd>{product.current_approved_visual_revision ?? "None"}</dd>
           <dt>Work Instruction Number</dt>
-          <dd>{product.work_instruction_number ?? "Not set"}</dd>
+          <dd>
+            {workPdf && product.work_instruction_number ? (
+              <Link href={`/p/${encodeURIComponent(product.part_number)}/documents/work-instruction`}>
+                {product.work_instruction_number} (View PDF)
+              </Link>
+            ) : (
+              product.work_instruction_number ?? "Not set"
+            )}
+          </dd>
           <dt>Final Inspection Part Number</dt>
-          <dd>{product.final_inspection_part_number ?? "Not set"}</dd>
+          <dd>
+            {finalPdf && product.final_inspection_part_number ? (
+              <Link href={`/p/${encodeURIComponent(product.part_number)}/documents/final-inspection`}>
+                {product.final_inspection_part_number} (View PDF)
+              </Link>
+            ) : (
+              product.final_inspection_part_number ?? "Not set"
+            )}
+          </dd>
         </dl>
       </section>
 
