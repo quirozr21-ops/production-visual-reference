@@ -30,7 +30,7 @@ export default async function PublicPdfPreview({
 
   const available = Boolean(await findPublicPdf(kind, number));
   const label = kind === "work-instruction"
-    ? "Work Instruction"
+    ? "Functional Work Instructions Part Number"
     : "Final Inspection";
   const source = `/api/public-documents/${encodeURIComponent(product.part_number)}/${kind}`;
 
