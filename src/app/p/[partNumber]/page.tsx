@@ -52,7 +52,7 @@ export default async function ProductReferencePage({
           <dd>{product.current_engineering_revision ?? "Not set"}</dd>
           <dt>Approved Visual Revision</dt>
           <dd>{product.current_approved_visual_revision ?? "None"}</dd>
-          <dt>Work Instruction Number</dt>
+          <dt>Functional Work Instructions Part Number</dt>
           <dd>
             {workPdf && product.work_instruction_number ? (
               <Link href={`/p/${encodeURIComponent(product.part_number)}/documents/work-instruction`}>
