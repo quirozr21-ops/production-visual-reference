@@ -43,12 +43,50 @@ export default async function NewProductPage({
           </label>
           <label>
             Functional Work Instructions Part Number
-            <input className="input" name="workInstruction" placeholder="0010-xxxxx" />
+            <input className="input" name="workInstruction" placeholder="0008-xxxxx" />
           </label>
           <label>
             Final Inspection Part Number
-            <input className="input" name="finalInspectionPartNumber" placeholder="0190-xxxxx" />
+            <input className="input" name="finalInspectionPartNumber" placeholder="0010-xxxxx" />
           </label>
+
+          <div className="note-box">
+            <strong>AKT SPECIFICATION — Optional</strong>
+            <div className="muted" style={{ marginTop: 6 }}>
+              Upload one released engineering-specification PDF while creating this product.
+              The PDF will be stored on SERVER04 and linked to this product&apos;s public QR page.
+            </div>
+          </div>
+
+          <label>
+            AKT Specification Document Number
+            <input
+              className="input"
+              name="aktDocumentNumber"
+              placeholder="0190-02918-001"
+            />
+          </label>
+          <label>
+            AKT Specification Title
+            <input
+              className="input"
+              name="aktTitle"
+              placeholder="Rev. 2 Specification"
+            />
+          </label>
+          <label>
+            AKT Specification PDF
+            <input
+              className="input"
+              name="aktSpecificationFile"
+              type="file"
+              accept=".pdf,application/pdf"
+            />
+          </label>
+          <p className="muted">
+            PDF only, maximum 12 MB. Enter the AKT document number when selecting a PDF.
+          </p>
+
           <button className="button" type="submit" disabled={isDemoMode}>
             Create Product
           </button>
