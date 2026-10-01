@@ -31,7 +31,7 @@ export default async function Home() {
       ) : null}
 
       <section className="disclaimer">
-        Production visual references are aids only. Released drawings, BOMs, work instructions, inspection documentation, and ECNs remain the controlled engineering sources unless company procedures explicitly state otherwise.
+        EAGLE TECH MANUFACTURING PRODUCTION REFERENCES are production aids only. Released drawings, BOMs, work instructions, inspection documentation, and ECNs remain the controlled engineering sources unless company procedures explicitly state otherwise.
       </section>
     </main>
   );
