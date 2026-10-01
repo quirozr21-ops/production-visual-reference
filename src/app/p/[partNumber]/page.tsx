@@ -47,7 +47,7 @@ export default async function ProductReferencePage({
       />
 
       <section className="card">
-        <div className="eyebrow">PRODUCTION VISUAL REFERENCE</div>
+        <div className="eyebrow">EAGLE TECH MANUFACTURING PRODUCTION REFERENCES</div>
         <div className="muted">PART NUMBER</div>
         <h1>{product.part_number}</h1>
         <h2>{product.description}</h2>
