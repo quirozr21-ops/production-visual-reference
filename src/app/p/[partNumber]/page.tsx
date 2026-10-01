@@ -4,7 +4,11 @@ import { ReferenceGallery } from "@/components/reference-gallery";
 import { StatusBanner } from "@/components/status-banner";
 import { getProductReference } from "@/lib/data/products";
 import { getReferenceState } from "@/lib/reference-state";
-import { findPublicPdf, listPublicAktSpecifications } from "@/lib/public-pdf-documents";
+import {
+  findPublicPdf,
+  listPublicAktSpecifications,
+  listPublicRevisionControlNotices,
+} from "@/lib/public-pdf-documents";
 
 export default async function ProductReferencePage({
   params,
@@ -31,6 +35,10 @@ export default async function ProductReferencePage({
 
   const aktSpecifications = product.current_approved_visual_revision
     ? await listPublicAktSpecifications(product.part_number)
+    : [];
+
+  const revisionControlNotices = product.current_approved_visual_revision
+    ? await listPublicRevisionControlNotices(product.part_number)
     : [];
 
   const state = getReferenceState(
@@ -99,6 +107,30 @@ export default async function ProductReferencePage({
         ) : (
           <p className="muted">
             No released AKT specification is currently linked to this product.
+          </p>
+        )}
+      </section>
+
+      <section className="card">
+        <div className="eyebrow">ENGINEERING REVISION DOCUMENTATION</div>
+        <h2>Eagle Tech Revision Control Notice</h2>
+        {revisionControlNotices.length > 0 ? (
+          <div className="stack">
+            {revisionControlNotices.map((notice) => (
+              <Link
+                key={notice.documentNumber}
+                className="button secondary"
+                href={`/p/${encodeURIComponent(product.part_number)}/documents/revision-control-notice/${encodeURIComponent(notice.documentNumber)}`}
+              >
+                {notice.documentNumber}
+                {notice.title ? ` — ${notice.title}` : ""}
+                {" (View PDF)"}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">
+            No released Eagle Tech Revision Control Notice is currently linked to this product.
           </p>
         )}
       </section>
