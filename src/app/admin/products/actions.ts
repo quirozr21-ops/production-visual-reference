@@ -6,6 +6,7 @@ import { isDemoMode } from "@/lib/config";
 import {
   MAX_PUBLIC_PDF_UPLOAD_BYTES,
   publishPublicAktSpecification,
+  publishPublicRevisionControlNotice,
 } from "@/lib/public-pdf-documents";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,6 +26,11 @@ export async function createProduct(formData: FormData) {
   const aktTitle = String(formData.get("aktTitle") ?? "").trim();
   const aktFile = formData.get("aktSpecificationFile");
   const hasAktFile = aktFile instanceof File && aktFile.size > 0;
+  const revisionNoticeNumber = String(formData.get("revisionNoticeNumber") ?? "").trim();
+  const revisionNoticeTitle = String(formData.get("revisionNoticeTitle") ?? "").trim();
+  const revisionNoticeFile = formData.get("revisionNoticeFile");
+  const hasRevisionNoticeFile =
+    revisionNoticeFile instanceof File && revisionNoticeFile.size > 0;
 
   if (!partNumber || !description || !engineeringRevision) {
     redirect("/admin/products/new?error=Part%20number%2C%20description%2C%20and%20engineering%20revision%20are%20required.");
@@ -36,6 +42,14 @@ export async function createProduct(formData: FormData) {
 
   if (!hasAktFile && (aktDocumentNumber || aktTitle)) {
     redirect("/admin/products/new?error=Choose%20an%20AKT%20Specification%20PDF%20or%20clear%20the%20AKT%20fields.");
+  }
+
+  if (hasRevisionNoticeFile && !revisionNoticeNumber) {
+    redirect("/admin/products/new?error=Enter%20the%20Revision%20Control%20Notice%20Number%20for%20the%20selected%20PDF.");
+  }
+
+  if (!hasRevisionNoticeFile && (revisionNoticeNumber || revisionNoticeTitle)) {
+    redirect("/admin/products/new?error=Choose%20a%20Revision%20Control%20Notice%20PDF%20or%20clear%20the%20Revision%20Control%20Notice%20fields.");
   }
 
   let aktBytes: Uint8Array | null = null;
@@ -57,6 +71,30 @@ export async function createProduct(formData: FormData) {
     aktBytes = new Uint8Array(await aktFile.arrayBuffer());
     if (Buffer.from(aktBytes.subarray(0, 5)).toString("ascii") !== "%PDF-") {
       redirect("/admin/products/new?error=The%20selected%20AKT%20Specification%20is%20not%20a%20valid%20PDF.");
+    }
+  }
+
+  let revisionNoticeBytes: Uint8Array | null = null;
+  if (hasRevisionNoticeFile) {
+    const normalizedType = revisionNoticeFile.type.trim().toLowerCase();
+    const allowedMime =
+      !normalizedType ||
+      normalizedType === "application/pdf" ||
+      normalizedType === "application/octet-stream";
+
+    if (!allowedMime || !revisionNoticeFile.name.toLowerCase().endsWith(".pdf")) {
+      redirect("/admin/products/new?error=Revision%20Control%20Notices%20must%20be%20PDF%20files.");
+    }
+
+    if (revisionNoticeFile.size > MAX_PUBLIC_PDF_UPLOAD_BYTES) {
+      redirect("/admin/products/new?error=Revision%20Control%20Notice%20PDFs%20must%20be%2012%20MB%20or%20smaller.");
+    }
+
+    revisionNoticeBytes = new Uint8Array(await revisionNoticeFile.arrayBuffer());
+    if (
+      Buffer.from(revisionNoticeBytes.subarray(0, 5)).toString("ascii") !== "%PDF-"
+    ) {
+      redirect("/admin/products/new?error=The%20selected%20Revision%20Control%20Notice%20is%20not%20a%20valid%20PDF.");
     }
   }
 
@@ -96,6 +134,32 @@ export async function createProduct(formData: FormData) {
       redirect(
         `/admin/products/${encodeURIComponent(product.id)}?error=${encodeURIComponent(
           `Product created, but the AKT Specification was not uploaded: ${message}`,
+        )}`,
+      );
+    }
+  }
+
+  if (hasRevisionNoticeFile && revisionNoticeBytes) {
+    try {
+      await publishPublicRevisionControlNotice({
+        partNumber,
+        documentNumber: revisionNoticeNumber,
+        title: revisionNoticeTitle,
+        originalFileName: revisionNoticeFile.name,
+        bytes: revisionNoticeBytes,
+      });
+    } catch (uploadError) {
+      console.error(
+        "Revision Control Notice upload failed after product creation.",
+        uploadError,
+      );
+      const message =
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Could not save the Revision Control Notice to SERVER04.";
+      redirect(
+        `/admin/products/${encodeURIComponent(product.id)}?error=${encodeURIComponent(
+          `Product created, but the Eagle Tech Revision Control Notice was not uploaded: ${message}`,
         )}`,
       );
     }
