@@ -13,6 +13,7 @@ PublicQR
 ├── final-inspection
 ├── work-instructions
 ├── akt-specification
+├── revision-control-notice
 └── public-document-index.json
 ```
 
@@ -32,11 +33,15 @@ PublicQR
         "document_number": "AKT-12345",
         "title": "Electrical Specification",
         "file": "akt-specification/AKT-12345 Electrical Specification.pdf"
-      },
+      }
+    ]
+  },
+  "revision-control-notice": {
+    "0190-02918": [
       {
-        "document_number": "AKT-67890",
-        "title": "Mechanical Specification",
-        "file": "akt-specification/AKT-67890 Mechanical Specification.pdf"
+        "document_number": "RCN-12345",
+        "title": "Engineering Revision Notice",
+        "file": "revision-control-notice/RCN-12345 Engineering Revision Notice.pdf"
       }
     ]
   }
@@ -44,8 +49,9 @@ PublicQR
 ```
 
 5. Copy the matching released PDF files into those subfolders.
-6. The public QR page displays an **AKT SPECIFICATION** section. Only AKT entries whose PDF file exists and passes the approved-folder checks are shown as links.
-7. The preview page embeds the PDF and also provides **Open PDF directly** for mobile browsers.
+6. The public QR page displays both **AKT SPECIFICATION** and **Eagle Tech Revision Control Notice** sections. Only indexed entries whose PDF file exists and passes the approved-folder checks are shown as links.
+7. The Create Product form can upload one optional AKT Specification PDF and one optional Revision Control Notice PDF. The app creates the SERVER04 subfolders automatically as needed.
+8. Preview pages embed the PDFs and also provide **Open PDF directly** for mobile browsers.
 
 ## Access safeguards
 
