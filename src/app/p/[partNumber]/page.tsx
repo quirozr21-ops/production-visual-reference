@@ -4,7 +4,7 @@ import { ReferenceGallery } from "@/components/reference-gallery";
 import { StatusBanner } from "@/components/status-banner";
 import { getProductReference } from "@/lib/data/products";
 import { getReferenceState } from "@/lib/reference-state";
-import { findPublicPdf } from "@/lib/public-pdf-documents";
+import { findPublicPdf, listPublicAktSpecifications } from "@/lib/public-pdf-documents";
 
 export default async function ProductReferencePage({
   params,
@@ -28,6 +28,10 @@ export default async function ProductReferencePage({
           : null,
       ])
     : [null, null];
+
+  const aktSpecifications = product.current_approved_visual_revision
+    ? await listPublicAktSpecifications(product.part_number)
+    : [];
 
   const state = getReferenceState(
     product.current_engineering_revision,
@@ -73,6 +77,30 @@ export default async function ProductReferencePage({
             )}
           </dd>
         </dl>
+      </section>
+
+      <section className="card">
+        <div className="eyebrow">ENGINEERING SPECIFICATIONS</div>
+        <h2>AKT SPECIFICATION</h2>
+        {aktSpecifications.length > 0 ? (
+          <div className="stack">
+            {aktSpecifications.map((specification) => (
+              <Link
+                key={specification.documentNumber}
+                className="button secondary"
+                href={`/p/${encodeURIComponent(product.part_number)}/documents/akt-specification/${encodeURIComponent(specification.documentNumber)}`}
+              >
+                {specification.documentNumber}
+                {specification.title ? ` — ${specification.title}` : ""}
+                {" (View PDF)"}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">
+            No released AKT specification is currently linked to this product.
+          </p>
+        )}
       </section>
 
       {product.critical_quality_notes ? (
