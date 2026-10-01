@@ -11,9 +11,9 @@ export default async function LoginPage({
   return (
     <main className="shell">
       <div className="card" style={{ maxWidth: 520, margin: "48px auto" }}>
-        <h1>Production Visual Reference</h1>
+        <h1>EAGLE TECH MANUFACTURING PRODUCTION REFERENCES</h1>
         <p className="muted">
-          Company authentication is required to access controlled production visual references.
+          Company authentication is required to access EAGLE TECH MANUFACTURING PRODUCTION REFERENCES.
         </p>
         {params.error ? <div className="status danger">{params.error}</div> : null}
         {params.passwordUpdated ? (
