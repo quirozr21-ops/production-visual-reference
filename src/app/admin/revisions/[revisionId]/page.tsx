@@ -87,7 +87,7 @@ export default async function RevisionPage({
               <div className="eyebrow">PERMANENT PRODUCT QR</div>
               <h2>Production QR Code</h2>
               <p className="muted" style={{ margin: 0 }}>
-                Scan this code to open the current approved Production visual reference. Keep the same QR on the product; when a future visual revision is approved, this code will automatically show the new approved revision.
+                Scan this code to open the current approved reference in EAGLE TECH MANUFACTURING PRODUCTION REFERENCES. Keep the same QR on the product; when a future visual revision is approved, this code will automatically show the new approved revision.
               </p>
               <div className="action-row" style={{ marginTop: 6 }}>
                 <a className="button secondary" href={`/api/qr/${encodedPartNumber}`} target="_blank" rel="noreferrer">
@@ -208,7 +208,7 @@ export default async function RevisionPage({
         <section className="card control-panel">
           <div className="eyebrow">QUALITY DISPOSITION</div>
           <h2>Approve or Reject</h2>
-          <p>Approval makes this revision the current Production visual reference and obsoletes the previously approved visual revision.</p>
+          <p>Approval makes this revision the current approved reference in EAGLE TECH MANUFACTURING PRODUCTION REFERENCES and obsoletes the previously approved visual revision.</p>
           <div className="two-column">
             <form action={approveVisualRevision} className="stack">
               <input type="hidden" name="revisionId" value={revision.id} />
