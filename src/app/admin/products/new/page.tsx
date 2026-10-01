@@ -87,6 +87,43 @@ export default async function NewProductPage({
             PDF only, maximum 12 MB. Enter the AKT document number when selecting a PDF.
           </p>
 
+          <div className="note-box">
+            <strong>Eagle Tech Revision Control Notice — Optional</strong>
+            <div className="muted" style={{ marginTop: 6 }}>
+              Upload one released Revision Control Notice PDF while creating this product.
+              The PDF will be stored on SERVER04 and linked to this product&apos;s public QR page.
+            </div>
+          </div>
+
+          <label>
+            Revision Control Notice Number
+            <input
+              className="input"
+              name="revisionNoticeNumber"
+              placeholder="RCN-xxxxx"
+            />
+          </label>
+          <label>
+            Revision Control Notice Title
+            <input
+              className="input"
+              name="revisionNoticeTitle"
+              placeholder="Revision notice title"
+            />
+          </label>
+          <label>
+            Revision Control Notice PDF
+            <input
+              className="input"
+              name="revisionNoticeFile"
+              type="file"
+              accept=".pdf,application/pdf"
+            />
+          </label>
+          <p className="muted">
+            PDF only, maximum 12 MB. Enter the Revision Control Notice number when selecting a PDF.
+          </p>
+
           <button className="button" type="submit" disabled={isDemoMode}>
             Create Product
           </button>
