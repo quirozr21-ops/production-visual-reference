@@ -13,7 +13,7 @@ export default async function ForgotPasswordPage({
       <div className="card" style={{ maxWidth: 520, margin: "48px auto" }}>
         <h1>Reset password</h1>
         <p className="muted">
-          Enter the email address for your Production Visual Reference account.
+          Enter the email address for your EAGLE TECH MANUFACTURING PRODUCTION REFERENCES account.
         </p>
         {params.error ? <div className="status danger">{params.error}</div> : null}
         {params.sent ? (
