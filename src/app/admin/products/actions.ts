@@ -38,3 +38,47 @@ export async function createProduct(formData: FormData) {
 
   redirect(`/p/${encodeURIComponent(partNumber)}`);
 }
+
+
+export async function updateProductMetadata(formData: FormData) {
+  await requireRole(["engineering", "document_control", "administrator"]);
+
+  if (isDemoMode) {
+    redirect("/admin?error=Disable%20demo%20mode%20to%20edit%20controlled%20product%20records.");
+  }
+
+  const productId = String(formData.get("productId") ?? "").trim();
+  const partNumber = String(formData.get("partNumber") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const engineeringRevision = String(formData.get("engineeringRevision") ?? "").trim();
+  const workInstruction = String(formData.get("workInstruction") ?? "").trim();
+  const finalInspectionPartNumber = String(formData.get("finalInspectionPartNumber") ?? "").trim();
+
+  if (!productId || !partNumber || !description || !engineeringRevision) {
+    redirect(
+      `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+        "Part number, description, and engineering revision are required.",
+      )}`,
+    );
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("products")
+    .update({
+      part_number: partNumber,
+      description,
+      current_engineering_revision: engineeringRevision,
+      work_instruction_number: workInstruction || null,
+      final_inspection_part_number: finalInspectionPartNumber || null,
+    })
+    .eq("id", productId);
+
+  if (error) {
+    redirect(
+      `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(error.message)}`,
+    );
+  }
+
+  redirect(`/admin/products/${encodeURIComponent(productId)}?updated=1`);
+}
