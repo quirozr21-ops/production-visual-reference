@@ -4,12 +4,12 @@ import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path"
 
 export type PublicPdfKind = "work-instruction" | "final-inspection";
 
-export type PublicAktSpecification = {
+export type PublicProductDocument = {
   documentNumber: string;
   title: string | null;
 };
 
-type AktSpecificationIndexEntry = {
+type ProductDocumentIndexEntry = {
   document_number: string;
   file: string;
   title?: string;
@@ -18,7 +18,8 @@ type AktSpecificationIndexEntry = {
 type PublicPdfIndex = {
   "work-instruction"?: Record<string, string>;
   "final-inspection"?: Record<string, string>;
-  "akt-specification"?: Record<string, AktSpecificationIndexEntry[]>;
+  "akt-specification"?: Record<string, ProductDocumentIndexEntry[]>;
+  "revision-control-notice"?: Record<string, ProductDocumentIndexEntry[]>;
 };
 
 export const MAX_PUBLIC_PDF_UPLOAD_BYTES = 12 * 1024 * 1024;
@@ -57,6 +58,15 @@ async function readPublicPdfIndex(directory: string) {
   // Be tolerant of a UTF-8 BOM if the index was edited by Windows PowerShell.
   const normalized = indexBytes.replace(/^\uFEFF/, "");
   return JSON.parse(normalized) as PublicPdfIndex;
+}
+
+async function writePublicPdfIndex(directory: string, index: PublicPdfIndex) {
+  // Node writes UTF-8 without a BOM, avoiding the Windows PowerShell BOM issue.
+  await writeFile(
+    resolve(directory, "public-document-index.json"),
+    `${JSON.stringify(index, null, 2)}\n`,
+    "utf8",
+  );
 }
 
 async function resolveIndexedPdf(directory: string, relativeFile: string) {
@@ -100,9 +110,10 @@ export async function findPublicPdf(kind: PublicPdfKind, documentNumber: string)
   }
 }
 
-export async function listPublicAktSpecifications(
+async function listProductDocuments(
+  kind: "akt-specification" | "revision-control-notice",
   partNumber: string,
-): Promise<PublicAktSpecification[]> {
+): Promise<PublicProductDocument[]> {
   const root = approvedPdfRoot();
   const productNumber = partNumber.trim();
   if (!root || !productNumber) return [];
@@ -110,8 +121,8 @@ export async function listPublicAktSpecifications(
   try {
     const directory = resolve(root);
     const index = await readPublicPdfIndex(directory);
-    const entries = index["akt-specification"]?.[productNumber] ?? [];
-    const released: PublicAktSpecification[] = [];
+    const entries = index[kind]?.[productNumber] ?? [];
+    const released: PublicProductDocument[] = [];
 
     for (const entry of entries) {
       if (
@@ -140,13 +151,14 @@ export async function listPublicAktSpecifications(
     return released;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      console.error("Unable to list released AKT specifications.", error);
+      console.error(`Unable to list released ${kind} documents.`, error);
     }
     return [];
   }
 }
 
-export async function findPublicAktSpecificationPdf(
+async function findProductDocumentPdf(
+  kind: "akt-specification" | "revision-control-notice",
   partNumber: string,
   documentNumber: string,
 ) {
@@ -158,7 +170,7 @@ export async function findPublicAktSpecificationPdf(
   try {
     const directory = resolve(root);
     const index = await readPublicPdfIndex(directory);
-    const entries = index["akt-specification"]?.[productNumber] ?? [];
+    const entries = index[kind]?.[productNumber] ?? [];
     const entry = entries.find(
       (candidate) =>
         typeof candidate?.document_number === "string" &&
@@ -169,10 +181,105 @@ export async function findPublicAktSpecificationPdf(
     return await resolveIndexedPdf(directory, entry.file);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      console.error("Unable to resolve released AKT specification.", error);
+      console.error(`Unable to resolve released ${kind} document.`, error);
     }
     return null;
   }
+}
+
+async function publishProductDocument({
+  kind,
+  partNumber,
+  documentNumber,
+  title,
+  originalFileName,
+  bytes,
+  defaultFileName,
+  defaultDocumentName,
+}: {
+  kind: "akt-specification" | "revision-control-notice";
+  partNumber: string;
+  documentNumber: string;
+  title: string;
+  originalFileName: string;
+  bytes: Uint8Array;
+  defaultFileName: string;
+  defaultDocumentName: string;
+}) {
+  const root = approvedPdfRoot();
+  if (!root) {
+    throw new Error("PUBLIC_APPROVED_DOCUMENTS_ROOT is not configured.");
+  }
+
+  const productNumber = partNumber.trim();
+  const number = documentNumber.trim();
+  if (!productNumber || !number) {
+    throw new Error(`Product part number and ${defaultDocumentName} number are required.`);
+  }
+  if (bytes.length < 5 || bytes.length > MAX_PUBLIC_PDF_UPLOAD_BYTES) {
+    throw new Error(`${defaultDocumentName} PDFs must be 12 MB or smaller.`);
+  }
+  if (Buffer.from(bytes.subarray(0, 5)).toString("ascii") !== "%PDF-") {
+    throw new Error(`The selected ${defaultDocumentName} is not a valid PDF.`);
+  }
+
+  const directory = resolve(root);
+  const index = await readPublicPdfIndex(directory);
+  const productIndex = index[kind] ?? {};
+  const existing = productIndex[productNumber] ?? [];
+
+  if (!Array.isArray(existing)) {
+    throw new Error(`The ${defaultDocumentName} index entry for this product is invalid.`);
+  }
+  if (existing.some((entry) => entry?.document_number?.trim() === number)) {
+    throw new Error(`${defaultDocumentName} ${number} is already linked to this product.`);
+  }
+
+  const safePartNumber = safePathSegment(productNumber, "product");
+  const safeDocumentNumber = safePathSegment(number, defaultFileName);
+  const safeOriginalName = safePathSegment(originalFileName, `${defaultFileName}.pdf`);
+  const pdfName = safeOriginalName.toLowerCase().endsWith(".pdf")
+    ? safeOriginalName
+    : `${safeOriginalName}.pdf`;
+  const storedFileName = `${safeDocumentNumber}-${randomUUID().slice(0, 8)}-${pdfName}`;
+  const relativeFile = `${kind}/${safePartNumber}/${storedFileName}`;
+  const destination = resolve(directory, ...relativeFile.split("/"));
+
+  if (!isWithinFolder(directory, destination)) {
+    throw new Error(`Invalid ${defaultDocumentName} storage path.`);
+  }
+
+  await mkdir(dirname(destination), { recursive: true });
+  await writeFile(destination, bytes, { flag: "wx" });
+
+  try {
+    productIndex[productNumber] = [
+      ...existing,
+      {
+        document_number: number,
+        title: title.trim() || undefined,
+        file: relativeFile,
+      },
+    ];
+    index[kind] = productIndex;
+    await writePublicPdfIndex(directory, index);
+  } catch (error) {
+    await rm(destination, { force: true });
+    throw error;
+  }
+
+  return relativeFile;
+}
+
+export async function listPublicAktSpecifications(partNumber: string) {
+  return listProductDocuments("akt-specification", partNumber);
+}
+
+export async function findPublicAktSpecificationPdf(
+  partNumber: string,
+  documentNumber: string,
+) {
+  return findProductDocumentPdf("akt-specification", partNumber, documentNumber);
 }
 
 export async function publishPublicAktSpecification({
@@ -188,73 +295,50 @@ export async function publishPublicAktSpecification({
   originalFileName: string;
   bytes: Uint8Array;
 }) {
-  const root = approvedPdfRoot();
-  if (!root) {
-    throw new Error("PUBLIC_APPROVED_DOCUMENTS_ROOT is not configured.");
-  }
+  return publishProductDocument({
+    kind: "akt-specification",
+    partNumber,
+    documentNumber,
+    title,
+    originalFileName,
+    bytes,
+    defaultFileName: "akt-spec",
+    defaultDocumentName: "AKT specification",
+  });
+}
 
-  const productNumber = partNumber.trim();
-  const number = documentNumber.trim();
-  if (!productNumber || !number) {
-    throw new Error("Product part number and AKT specification number are required.");
-  }
-  if (bytes.length < 5 || bytes.length > MAX_PUBLIC_PDF_UPLOAD_BYTES) {
-    throw new Error("AKT specification PDFs must be 12 MB or smaller.");
-  }
-  if (Buffer.from(bytes.subarray(0, 5)).toString("ascii") !== "%PDF-") {
-    throw new Error("The selected AKT specification is not a valid PDF.");
-  }
+export async function listPublicRevisionControlNotices(partNumber: string) {
+  return listProductDocuments("revision-control-notice", partNumber);
+}
 
-  const directory = resolve(root);
-  const index = await readPublicPdfIndex(directory);
-  const aktIndex = index["akt-specification"] ?? {};
-  const existing = aktIndex[productNumber] ?? [];
+export async function findPublicRevisionControlNoticePdf(
+  partNumber: string,
+  documentNumber: string,
+) {
+  return findProductDocumentPdf("revision-control-notice", partNumber, documentNumber);
+}
 
-  if (!Array.isArray(existing)) {
-    throw new Error("The AKT specification index entry for this product is invalid.");
-  }
-  if (existing.some((entry) => entry?.document_number?.trim() === number)) {
-    throw new Error(`AKT specification ${number} is already linked to this product.`);
-  }
-
-  const safePartNumber = safePathSegment(productNumber, "product");
-  const safeDocumentNumber = safePathSegment(number, "akt-spec");
-  const safeOriginalName = safePathSegment(originalFileName, "specification.pdf");
-  const pdfName = safeOriginalName.toLowerCase().endsWith(".pdf")
-    ? safeOriginalName
-    : `${safeOriginalName}.pdf`;
-  const storedFileName = `${safeDocumentNumber}-${randomUUID().slice(0, 8)}-${pdfName}`;
-  const relativeFile = `akt-specification/${safePartNumber}/${storedFileName}`;
-  const destination = resolve(directory, ...relativeFile.split("/"));
-
-  if (!isWithinFolder(directory, destination)) {
-    throw new Error("Invalid AKT specification storage path.");
-  }
-
-  await mkdir(dirname(destination), { recursive: true });
-  await writeFile(destination, bytes, { flag: "wx" });
-
-  try {
-    aktIndex[productNumber] = [
-      ...existing,
-      {
-        document_number: number,
-        title: title.trim() || undefined,
-        file: relativeFile,
-      },
-    ];
-    index["akt-specification"] = aktIndex;
-
-    // Node writes UTF-8 without a BOM, avoiding the PowerShell BOM issue.
-    await writeFile(
-      resolve(directory, "public-document-index.json"),
-      `${JSON.stringify(index, null, 2)}\n`,
-      "utf8",
-    );
-  } catch (error) {
-    await rm(destination, { force: true });
-    throw error;
-  }
-
-  return relativeFile;
+export async function publishPublicRevisionControlNotice({
+  partNumber,
+  documentNumber,
+  title,
+  originalFileName,
+  bytes,
+}: {
+  partNumber: string;
+  documentNumber: string;
+  title: string;
+  originalFileName: string;
+  bytes: Uint8Array;
+}) {
+  return publishProductDocument({
+    kind: "revision-control-notice",
+    partNumber,
+    documentNumber,
+    title,
+    originalFileName,
+    bytes,
+    defaultFileName: "revision-notice",
+    defaultDocumentName: "Revision Control Notice",
+  });
 }
