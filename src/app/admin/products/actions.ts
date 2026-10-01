@@ -3,6 +3,10 @@
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { isDemoMode } from "@/lib/config";
+import {
+  MAX_PUBLIC_PDF_UPLOAD_BYTES,
+  publishPublicAktSpecification,
+} from "@/lib/public-pdf-documents";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createProduct(formData: FormData) {
@@ -17,23 +21,84 @@ export async function createProduct(formData: FormData) {
   const engineeringRevision = String(formData.get("engineeringRevision") ?? "").trim();
   const workInstruction = String(formData.get("workInstruction") ?? "").trim();
   const finalInspectionPartNumber = String(formData.get("finalInspectionPartNumber") ?? "").trim();
+  const aktDocumentNumber = String(formData.get("aktDocumentNumber") ?? "").trim();
+  const aktTitle = String(formData.get("aktTitle") ?? "").trim();
+  const aktFile = formData.get("aktSpecificationFile");
+  const hasAktFile = aktFile instanceof File && aktFile.size > 0;
 
   if (!partNumber || !description || !engineeringRevision) {
     redirect("/admin/products/new?error=Part%20number%2C%20description%2C%20and%20engineering%20revision%20are%20required.");
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("products").insert({
-    part_number: partNumber,
-    description,
-    current_engineering_revision: engineeringRevision,
-    work_instruction_number: workInstruction || null,
-    final_inspection_part_number: finalInspectionPartNumber || null,
-    created_by: user.id,
-  });
+  if (hasAktFile && !aktDocumentNumber) {
+    redirect("/admin/products/new?error=Enter%20the%20AKT%20Specification%20Document%20Number%20for%20the%20selected%20PDF.");
+  }
 
-  if (error) {
-    redirect(`/admin/products/new?error=${encodeURIComponent(error.message)}`);
+  if (!hasAktFile && (aktDocumentNumber || aktTitle)) {
+    redirect("/admin/products/new?error=Choose%20an%20AKT%20Specification%20PDF%20or%20clear%20the%20AKT%20fields.");
+  }
+
+  let aktBytes: Uint8Array | null = null;
+  if (hasAktFile) {
+    const normalizedType = aktFile.type.trim().toLowerCase();
+    const allowedMime =
+      !normalizedType ||
+      normalizedType === "application/pdf" ||
+      normalizedType === "application/octet-stream";
+
+    if (!allowedMime || !aktFile.name.toLowerCase().endsWith(".pdf")) {
+      redirect("/admin/products/new?error=AKT%20Specifications%20must%20be%20PDF%20files.");
+    }
+
+    if (aktFile.size > MAX_PUBLIC_PDF_UPLOAD_BYTES) {
+      redirect("/admin/products/new?error=AKT%20Specification%20PDFs%20must%20be%2012%20MB%20or%20smaller.");
+    }
+
+    aktBytes = new Uint8Array(await aktFile.arrayBuffer());
+    if (Buffer.from(aktBytes.subarray(0, 5)).toString("ascii") !== "%PDF-") {
+      redirect("/admin/products/new?error=The%20selected%20AKT%20Specification%20is%20not%20a%20valid%20PDF.");
+    }
+  }
+
+  const supabase = await createClient();
+  const { data: product, error } = await supabase
+    .from("products")
+    .insert({
+      part_number: partNumber,
+      description,
+      current_engineering_revision: engineeringRevision,
+      work_instruction_number: workInstruction || null,
+      final_inspection_part_number: finalInspectionPartNumber || null,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+
+  if (error || !product) {
+    redirect(`/admin/products/new?error=${encodeURIComponent(error?.message ?? "Unable to create product.")}`);
+  }
+
+  if (hasAktFile && aktBytes) {
+    try {
+      await publishPublicAktSpecification({
+        partNumber,
+        documentNumber: aktDocumentNumber,
+        title: aktTitle,
+        originalFileName: aktFile.name,
+        bytes: aktBytes,
+      });
+    } catch (uploadError) {
+      console.error("AKT specification upload failed after product creation.", uploadError);
+      const message =
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Could not save the AKT specification to SERVER04.";
+      redirect(
+        `/admin/products/${encodeURIComponent(product.id)}?error=${encodeURIComponent(
+          `Product created, but the AKT Specification was not uploaded: ${message}`,
+        )}`,
+      );
+    }
   }
 
   redirect(`/p/${encodeURIComponent(partNumber)}`);
