@@ -7,6 +7,7 @@ import { getReferenceState } from "@/lib/reference-state";
 import {
   findPublicPdf,
   listPublicAktSpecifications,
+  listPublicAktWiringDiagrams,
   listPublicRevisionControlNotices,
 } from "@/lib/public-pdf-documents";
 
@@ -39,6 +40,10 @@ export default async function ProductReferencePage({
 
   const revisionControlNotices = product.current_approved_visual_revision
     ? await listPublicRevisionControlNotices(product.part_number)
+    : [];
+
+  const wiringDiagrams = product.current_approved_visual_revision
+    ? await listPublicAktWiringDiagrams(product.part_number)
     : [];
 
   const state = getReferenceState(
@@ -107,6 +112,30 @@ export default async function ProductReferencePage({
         ) : (
           <p className="muted">
             No released AKT specification is currently linked to this product.
+          </p>
+        )}
+      </section>
+
+      <section className="card">
+        <div className="eyebrow">ENGINEERING WIRING DOCUMENTATION</div>
+        <h2>AKT Wiring Diagram Part Number</h2>
+        {wiringDiagrams.length > 0 ? (
+          <div className="stack">
+            {wiringDiagrams.map((diagram) => (
+              <Link
+                key={diagram.documentNumber}
+                className="button secondary"
+                href={`/p/${encodeURIComponent(product.part_number)}/documents/akt-wiring-diagram/${encodeURIComponent(diagram.documentNumber)}`}
+              >
+                {diagram.documentNumber}
+                {diagram.title ? ` — ${diagram.title}` : ""}
+                {" (View PDF)"}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">
+            No released AKT wiring diagram is currently linked to this product.
           </p>
         )}
       </section>
