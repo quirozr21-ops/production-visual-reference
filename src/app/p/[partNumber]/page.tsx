@@ -79,6 +79,25 @@ export default async function ProductReferencePage({
               product.work_instruction_number ?? "Not set"
             )}
           </dd>
+          <dt>AKT Wiring Diagram Part Number</dt>
+          <dd>
+            {wiringDiagrams.length > 0 ? (
+              <div className="stack">
+                {wiringDiagrams.map((diagram) => (
+                  <Link
+                    key={diagram.documentNumber}
+                    href={`/p/${encodeURIComponent(product.part_number)}/documents/akt-wiring-diagram/${encodeURIComponent(diagram.documentNumber)}`}
+                  >
+                    {diagram.documentNumber}
+                    {diagram.title ? ` — ${diagram.title}` : ""}
+                    {" (View PDF)"}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              "Not set"
+            )}
+          </dd>
           <dt>Final Inspection Part Number</dt>
           <dd>
             {finalPdf && product.final_inspection_part_number ? (
@@ -112,30 +131,6 @@ export default async function ProductReferencePage({
         ) : (
           <p className="muted">
             No released AKT specification is currently linked to this product.
-          </p>
-        )}
-      </section>
-
-      <section className="card">
-        <div className="eyebrow">ENGINEERING WIRING DOCUMENTATION</div>
-        <h2>AKT Wiring Diagram Part Number</h2>
-        {wiringDiagrams.length > 0 ? (
-          <div className="stack">
-            {wiringDiagrams.map((diagram) => (
-              <Link
-                key={diagram.documentNumber}
-                className="button secondary"
-                href={`/p/${encodeURIComponent(product.part_number)}/documents/akt-wiring-diagram/${encodeURIComponent(diagram.documentNumber)}`}
-              >
-                {diagram.documentNumber}
-                {diagram.title ? ` — ${diagram.title}` : ""}
-                {" (View PDF)"}
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">
-            No released AKT wiring diagram is currently linked to this product.
           </p>
         )}
       </section>
