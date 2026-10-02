@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { getControlledProduct } from "@/lib/data/revisions";
+import { listPublicAktWiringDiagrams } from "@/lib/public-pdf-documents";
 import { updateProductMetadata } from "../actions";
 
 function statusClass(status: string) {
@@ -23,6 +24,10 @@ export default async function ControlledProductPage({
   const query = await searchParams;
   const product = await getControlledProduct(productId);
   if (!product) notFound();
+
+  const wiringDiagrams = product.current_approved_visual_revision
+    ? await listPublicAktWiringDiagrams(product.part_number)
+    : [];
 
   const canAuthor = user.role === "engineering" || user.role === "administrator";
   const canEditMetadata =
@@ -47,6 +52,12 @@ export default async function ControlledProductPage({
           <dt>Engineering Rev</dt><dd>{product.current_engineering_revision ?? "Not set"}</dd>
           <dt>Approved Visual Rev</dt><dd>{product.current_approved_visual_revision ?? "None"}</dd>
           <dt>Functional Work Instructions Part Number</dt><dd>{product.work_instruction_number ?? "—"}</dd>
+          <dt>AKT Wiring Diagram Part Number</dt>
+          <dd>
+            {wiringDiagrams.length > 0
+              ? wiringDiagrams.map((diagram) => diagram.documentNumber).join(", ")
+              : "—"}
+          </dd>
           <dt>Final Inspection Part Number</dt><dd>{product.final_inspection_part_number ?? "—"}</dd>
           <dt>Status</dt><dd>{product.status}</dd>
         </dl>
@@ -94,6 +105,44 @@ export default async function ControlledProductPage({
                 placeholder="0008-xxxxx"
               />
             </label>
+            <div className="note-box">
+              <strong>AKT Wiring Diagram — Optional</strong>
+              <div className="muted" style={{ marginTop: 6 }}>
+                {wiringDiagrams.length > 0
+                  ? `Currently linked: ${wiringDiagrams
+                      .map((diagram) => diagram.documentNumber)
+                      .join(", ")}`
+                  : "No AKT wiring diagram is currently linked to this product."}
+              </div>
+            </div>
+            <label>
+              AKT Wiring Diagram Part Number
+              <input
+                className="input"
+                name="wiringDiagramNumber"
+                placeholder="0190-xxxxx-xxx"
+              />
+            </label>
+            <label>
+              AKT Wiring Diagram Title
+              <input
+                className="input"
+                name="wiringDiagramTitle"
+                placeholder="Wiring Diagram"
+              />
+            </label>
+            <label>
+              AKT Wiring Diagram PDF
+              <input
+                className="input"
+                name="wiringDiagramFile"
+                type="file"
+                accept=".pdf,application/pdf"
+              />
+            </label>
+            <p className="muted">
+              To add a wiring diagram to this existing product, enter its part number and select the released PDF. PDF only, maximum 12 MB.
+            </p>
             <label>
               Final Inspection Part Number
               <input
