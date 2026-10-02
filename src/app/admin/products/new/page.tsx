@@ -46,6 +46,14 @@ export default async function NewProductPage({
             <input className="input" name="workInstruction" placeholder="0008-xxxxx" />
           </label>
           <label>
+            AKT Wiring Diagram Part Number
+            <input
+              className="input"
+              name="wiringDiagramNumber"
+              placeholder="0190-xxxxx-xxx"
+            />
+          </label>
+          <label>
             Final Inspection Part Number
             <input className="input" name="finalInspectionPartNumber" placeholder="0010-xxxxx" />
           </label>
@@ -132,14 +140,6 @@ export default async function NewProductPage({
             </div>
           </div>
 
-          <label>
-            AKT Wiring Diagram Part Number
-            <input
-              className="input"
-              name="wiringDiagramNumber"
-              placeholder="0190-xxxxx-xxx"
-            />
-          </label>
           <label>
             AKT Wiring Diagram Title
             <input
