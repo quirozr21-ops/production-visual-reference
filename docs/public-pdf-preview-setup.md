@@ -14,6 +14,7 @@ PublicQR
 ├── work-instructions
 ├── akt-specification
 ├── revision-control-notice
+├── akt-wiring-diagram
 └── public-document-index.json
 ```
 
@@ -44,14 +45,24 @@ PublicQR
         "file": "revision-control-notice/RCN-12345 Engineering Revision Notice.pdf"
       }
     ]
+  },
+  "akt-wiring-diagram": {
+    "0190-02918": [
+      {
+        "document_number": "0190-02918-WD",
+        "title": "Wiring Diagram",
+        "file": "akt-wiring-diagram/0190-02918-WD Wiring Diagram.pdf"
+      }
+    ]
   }
 }
 ```
 
 5. Copy the matching released PDF files into those subfolders.
-6. The public QR page displays both **AKT SPECIFICATION** and **Eagle Tech Revision Control Notice** sections. Only indexed entries whose PDF file exists and passes the approved-folder checks are shown as links.
-7. The Create Product form can upload one optional AKT Specification PDF and one optional Revision Control Notice PDF. The app creates the SERVER04 subfolders automatically as needed.
-8. Preview pages embed the PDFs and also provide **Open PDF directly** for mobile browsers.
+6. The public QR page displays **AKT SPECIFICATION**, **Eagle Tech Revision Control Notice**, and **AKT Wiring Diagram Part Number** sections. Only indexed entries whose PDF file exists and passes the approved-folder checks are shown as links.
+7. The Create Product form can upload one optional AKT Specification PDF, one optional Revision Control Notice PDF, and one optional AKT Wiring Diagram PDF. The app creates the SERVER04 subfolders automatically as needed.
+8. Each uploaded PDF is limited to 12 MB; the overall Create Product form is configured for up to 48 MB.
+9. Preview pages embed the PDFs and also provide **Open PDF directly** for mobile browsers.
 
 ## Access safeguards
 
