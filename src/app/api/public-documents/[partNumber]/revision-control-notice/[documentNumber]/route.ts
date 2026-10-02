@@ -14,6 +14,7 @@ export async function GET(
   },
 ) {
   const { partNumber, documentNumber } = await params;
+  const decodedDocumentNumber = decodeURIComponent(documentNumber);
   const product = await getProductReference(partNumber);
 
   if (
@@ -26,7 +27,7 @@ export async function GET(
 
   const file = await findPublicRevisionControlNoticePdf(
     product.part_number,
-    documentNumber,
+    decodedDocumentNumber,
   );
   if (!file) return new Response("Document not available", { status: 404 });
 
@@ -36,7 +37,7 @@ export async function GET(
       return new Response("Document not available", { status: 404 });
     }
 
-    const safeName = documentNumber.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const safeName = decodedDocumentNumber.replace(/[^a-zA-Z0-9_-]/g, "_");
     return new Response(new Uint8Array(bytes), {
       headers: {
         "Content-Type": "application/pdf",
