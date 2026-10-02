@@ -11,6 +11,7 @@ export default async function RevisionControlNoticePreview({
   params: Promise<{ partNumber: string; documentNumber: string }>;
 }) {
   const { partNumber, documentNumber } = await params;
+  const decodedDocumentNumber = decodeURIComponent(documentNumber);
   const product = await getProductReference(partNumber);
 
   if (
@@ -23,7 +24,7 @@ export default async function RevisionControlNoticePreview({
 
   const notices = await listPublicRevisionControlNotices(product.part_number);
   const notice = notices.find(
-    (candidate) => candidate.documentNumber === documentNumber,
+    (candidate) => candidate.documentNumber === decodedDocumentNumber,
   );
   if (!notice) notFound();
 
