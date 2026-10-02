@@ -127,8 +127,8 @@ export default async function NewProductPage({
           <div className="note-box">
             <strong>AKT Wiring Diagram Part Number — Optional</strong>
             <div className="muted" style={{ marginTop: 6 }}>
-              Upload one released AKT wiring diagram PDF while creating this product.
-              The PDF will be stored on SERVER04 and linked to this product&apos;s public QR page.
+              The wiring diagram part number can be saved without a PDF.
+              Upload the released PDF now, or add it later from Edit Product Details.
             </div>
           </div>
 
@@ -158,7 +158,7 @@ export default async function NewProductPage({
             />
           </label>
           <p className="muted">
-            PDF only, maximum 12 MB. Enter the AKT Wiring Diagram Part Number when selecting a PDF.
+            PDF upload is optional and can be added later. PDF only, maximum 12 MB.
           </p>
 
           <button className="button" type="submit" disabled={isDemoMode}>
