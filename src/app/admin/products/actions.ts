@@ -6,6 +6,7 @@ import { isDemoMode } from "@/lib/config";
 import {
   MAX_PUBLIC_PDF_UPLOAD_BYTES,
   publishPublicAktSpecification,
+  publishPublicAktWiringDiagram,
   publishPublicRevisionControlNotice,
 } from "@/lib/public-pdf-documents";
 import { createClient } from "@/lib/supabase/server";
@@ -31,6 +32,11 @@ export async function createProduct(formData: FormData) {
   const revisionNoticeFile = formData.get("revisionNoticeFile");
   const hasRevisionNoticeFile =
     revisionNoticeFile instanceof File && revisionNoticeFile.size > 0;
+  const wiringDiagramNumber = String(formData.get("wiringDiagramNumber") ?? "").trim();
+  const wiringDiagramTitle = String(formData.get("wiringDiagramTitle") ?? "").trim();
+  const wiringDiagramFile = formData.get("wiringDiagramFile");
+  const hasWiringDiagramFile =
+    wiringDiagramFile instanceof File && wiringDiagramFile.size > 0;
 
   if (!partNumber || !description || !engineeringRevision) {
     redirect("/admin/products/new?error=Part%20number%2C%20description%2C%20and%20engineering%20revision%20are%20required.");
@@ -50,6 +56,14 @@ export async function createProduct(formData: FormData) {
 
   if (!hasRevisionNoticeFile && (revisionNoticeNumber || revisionNoticeTitle)) {
     redirect("/admin/products/new?error=Choose%20a%20Revision%20Control%20Notice%20PDF%20or%20clear%20the%20Revision%20Control%20Notice%20fields.");
+  }
+
+  if (hasWiringDiagramFile && !wiringDiagramNumber) {
+    redirect("/admin/products/new?error=Enter%20the%20AKT%20Wiring%20Diagram%20Part%20Number%20for%20the%20selected%20PDF.");
+  }
+
+  if (!hasWiringDiagramFile && (wiringDiagramNumber || wiringDiagramTitle)) {
+    redirect("/admin/products/new?error=Choose%20an%20AKT%20Wiring%20Diagram%20PDF%20or%20clear%20the%20Wiring%20Diagram%20fields.");
   }
 
   let aktBytes: Uint8Array | null = null;
@@ -95,6 +109,30 @@ export async function createProduct(formData: FormData) {
       Buffer.from(revisionNoticeBytes.subarray(0, 5)).toString("ascii") !== "%PDF-"
     ) {
       redirect("/admin/products/new?error=The%20selected%20Revision%20Control%20Notice%20is%20not%20a%20valid%20PDF.");
+    }
+  }
+
+  let wiringDiagramBytes: Uint8Array | null = null;
+  if (hasWiringDiagramFile) {
+    const normalizedType = wiringDiagramFile.type.trim().toLowerCase();
+    const allowedMime =
+      !normalizedType ||
+      normalizedType === "application/pdf" ||
+      normalizedType === "application/octet-stream";
+
+    if (!allowedMime || !wiringDiagramFile.name.toLowerCase().endsWith(".pdf")) {
+      redirect("/admin/products/new?error=AKT%20Wiring%20Diagrams%20must%20be%20PDF%20files.");
+    }
+
+    if (wiringDiagramFile.size > MAX_PUBLIC_PDF_UPLOAD_BYTES) {
+      redirect("/admin/products/new?error=AKT%20Wiring%20Diagram%20PDFs%20must%20be%2012%20MB%20or%20smaller.");
+    }
+
+    wiringDiagramBytes = new Uint8Array(await wiringDiagramFile.arrayBuffer());
+    if (
+      Buffer.from(wiringDiagramBytes.subarray(0, 5)).toString("ascii") !== "%PDF-"
+    ) {
+      redirect("/admin/products/new?error=The%20selected%20AKT%20Wiring%20Diagram%20is%20not%20a%20valid%20PDF.");
     }
   }
 
@@ -160,6 +198,29 @@ export async function createProduct(formData: FormData) {
       redirect(
         `/admin/products/${encodeURIComponent(product.id)}?error=${encodeURIComponent(
           `Product created, but the Eagle Tech Revision Control Notice was not uploaded: ${message}`,
+        )}`,
+      );
+    }
+  }
+
+  if (hasWiringDiagramFile && wiringDiagramBytes) {
+    try {
+      await publishPublicAktWiringDiagram({
+        partNumber,
+        documentNumber: wiringDiagramNumber,
+        title: wiringDiagramTitle,
+        originalFileName: wiringDiagramFile.name,
+        bytes: wiringDiagramBytes,
+      });
+    } catch (uploadError) {
+      console.error("AKT Wiring Diagram upload failed after product creation.", uploadError);
+      const message =
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Could not save the AKT Wiring Diagram to SERVER04.";
+      redirect(
+        `/admin/products/${encodeURIComponent(product.id)}?error=${encodeURIComponent(
+          `Product created, but the AKT Wiring Diagram was not uploaded: ${message}`,
         )}`,
       );
     }
