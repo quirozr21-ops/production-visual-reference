@@ -53,11 +53,7 @@ export default async function ControlledProductPage({
           <dt>Approved Visual Rev</dt><dd>{product.current_approved_visual_revision ?? "None"}</dd>
           <dt>Functional Work Instructions Part Number</dt><dd>{product.work_instruction_number ?? "—"}</dd>
           <dt>AKT Wiring Diagram Part Number</dt>
-          <dd>
-            {wiringDiagrams.length > 0
-              ? wiringDiagrams.map((diagram) => diagram.documentNumber).join(", ")
-              : "—"}
-          </dd>
+          <dd>{product.akt_wiring_diagram_part_number ?? "—"}</dd>
           <dt>Final Inspection Part Number</dt><dd>{product.final_inspection_part_number ?? "—"}</dd>
           <dt>Status</dt><dd>{product.status}</dd>
         </dl>
@@ -108,11 +104,14 @@ export default async function ControlledProductPage({
             <div className="note-box">
               <strong>AKT Wiring Diagram — Optional</strong>
               <div className="muted" style={{ marginTop: 6 }}>
-                {wiringDiagrams.length > 0
-                  ? `Currently linked: ${wiringDiagrams
-                      .map((diagram) => diagram.documentNumber)
-                      .join(", ")}`
-                  : "No AKT wiring diagram is currently linked to this product."}
+                {wiringDiagrams.some(
+                  (diagram) =>
+                    diagram.documentNumber === product.akt_wiring_diagram_part_number,
+                )
+                  ? "A released PDF is linked to this wiring diagram part number."
+                  : product.akt_wiring_diagram_part_number
+                    ? "Part number saved. No released PDF is linked yet."
+                    : "No AKT wiring diagram part number is currently set."}
               </div>
             </div>
             <label>
@@ -120,6 +119,7 @@ export default async function ControlledProductPage({
               <input
                 className="input"
                 name="wiringDiagramNumber"
+                defaultValue={product.akt_wiring_diagram_part_number ?? ""}
                 placeholder="0190-xxxxx-xxx"
               />
             </label>
@@ -141,7 +141,7 @@ export default async function ControlledProductPage({
               />
             </label>
             <p className="muted">
-              To add a wiring diagram to this existing product, enter its part number and select the released PDF. PDF only, maximum 12 MB.
+              You can save the part number now and upload the released PDF later. If uploading a PDF, it must be 12 MB or smaller.
             </p>
             <label>
               Final Inspection Part Number
