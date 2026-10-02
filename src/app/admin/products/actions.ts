@@ -62,10 +62,6 @@ export async function createProduct(formData: FormData) {
     redirect("/admin/products/new?error=Enter%20the%20AKT%20Wiring%20Diagram%20Part%20Number%20for%20the%20selected%20PDF.");
   }
 
-  if (!hasWiringDiagramFile && wiringDiagramTitle) {
-    redirect("/admin/products/new?error=Choose%20an%20AKT%20Wiring%20Diagram%20PDF%20or%20clear%20the%20Wiring%20Diagram%20Title.");
-  }
-
   let aktBytes: Uint8Array | null = null;
   if (hasAktFile) {
     const normalizedType = aktFile.type.trim().toLowerCase();
@@ -262,14 +258,6 @@ export async function updateProductMetadata(formData: FormData) {
     redirect(
       `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
         "Enter the AKT Wiring Diagram Part Number for the selected PDF.",
-      )}`,
-    );
-  }
-
-  if (!hasWiringDiagramFile && wiringDiagramTitle) {
-    redirect(
-      `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
-        "Choose an AKT Wiring Diagram PDF or clear the AKT Wiring Diagram Title.",
       )}`,
     );
   }
