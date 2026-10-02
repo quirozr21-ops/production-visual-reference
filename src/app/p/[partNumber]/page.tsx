@@ -46,6 +46,13 @@ export default async function ProductReferencePage({
     ? await listPublicAktWiringDiagrams(product.part_number)
     : [];
 
+  const wiringDiagram = product.akt_wiring_diagram_part_number
+    ? wiringDiagrams.find(
+        (diagram) =>
+          diagram.documentNumber === product.akt_wiring_diagram_part_number,
+      ) ?? null
+    : null;
+
   const state = getReferenceState(
     product.current_engineering_revision,
     product.current_approved_visual_revision,
@@ -81,21 +88,14 @@ export default async function ProductReferencePage({
           </dd>
           <dt>AKT Wiring Diagram Part Number</dt>
           <dd>
-            {wiringDiagrams.length > 0 ? (
-              <div className="stack">
-                {wiringDiagrams.map((diagram) => (
-                  <Link
-                    key={diagram.documentNumber}
-                    href={`/p/${encodeURIComponent(product.part_number)}/documents/akt-wiring-diagram/${encodeURIComponent(diagram.documentNumber)}`}
-                  >
-                    {diagram.documentNumber}
-                    {diagram.title ? ` — ${diagram.title}` : ""}
-                    {" (View PDF)"}
-                  </Link>
-                ))}
-              </div>
+            {wiringDiagram && product.akt_wiring_diagram_part_number ? (
+              <Link
+                href={`/p/${encodeURIComponent(product.part_number)}/documents/akt-wiring-diagram/${encodeURIComponent(product.akt_wiring_diagram_part_number)}`}
+              >
+                {product.akt_wiring_diagram_part_number} (View PDF)
+              </Link>
             ) : (
-              "Not set"
+              product.akt_wiring_diagram_part_number ?? "Not set"
             )}
           </dd>
           <dt>Final Inspection Part Number</dt>
