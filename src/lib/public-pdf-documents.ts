@@ -20,6 +20,7 @@ type PublicPdfIndex = {
   "final-inspection"?: Record<string, string>;
   "akt-specification"?: Record<string, ProductDocumentIndexEntry[]>;
   "revision-control-notice"?: Record<string, ProductDocumentIndexEntry[]>;
+  "akt-wiring-diagram"?: Record<string, ProductDocumentIndexEntry[]>;
 };
 
 export const MAX_PUBLIC_PDF_UPLOAD_BYTES = 12 * 1024 * 1024;
@@ -111,7 +112,7 @@ export async function findPublicPdf(kind: PublicPdfKind, documentNumber: string)
 }
 
 async function listProductDocuments(
-  kind: "akt-specification" | "revision-control-notice",
+  kind: "akt-specification" | "revision-control-notice" | "akt-wiring-diagram",
   partNumber: string,
 ): Promise<PublicProductDocument[]> {
   const root = approvedPdfRoot();
@@ -158,7 +159,7 @@ async function listProductDocuments(
 }
 
 async function findProductDocumentPdf(
-  kind: "akt-specification" | "revision-control-notice",
+  kind: "akt-specification" | "revision-control-notice" | "akt-wiring-diagram",
   partNumber: string,
   documentNumber: string,
 ) {
@@ -197,7 +198,7 @@ async function publishProductDocument({
   defaultFileName,
   defaultDocumentName,
 }: {
-  kind: "akt-specification" | "revision-control-notice";
+  kind: "akt-specification" | "revision-control-notice" | "akt-wiring-diagram";
   partNumber: string;
   documentNumber: string;
   title: string;
@@ -340,5 +341,42 @@ export async function publishPublicRevisionControlNotice({
     bytes,
     defaultFileName: "revision-notice",
     defaultDocumentName: "Revision Control Notice",
+  });
+}
+
+
+export async function listPublicAktWiringDiagrams(partNumber: string) {
+  return listProductDocuments("akt-wiring-diagram", partNumber);
+}
+
+export async function findPublicAktWiringDiagramPdf(
+  partNumber: string,
+  documentNumber: string,
+) {
+  return findProductDocumentPdf("akt-wiring-diagram", partNumber, documentNumber);
+}
+
+export async function publishPublicAktWiringDiagram({
+  partNumber,
+  documentNumber,
+  title,
+  originalFileName,
+  bytes,
+}: {
+  partNumber: string;
+  documentNumber: string;
+  title: string;
+  originalFileName: string;
+  bytes: Uint8Array;
+}) {
+  return publishProductDocument({
+    kind: "akt-wiring-diagram",
+    partNumber,
+    documentNumber,
+    title,
+    originalFileName,
+    bytes,
+    defaultFileName: "akt-wiring-diagram",
+    defaultDocumentName: "AKT Wiring Diagram",
   });
 }
