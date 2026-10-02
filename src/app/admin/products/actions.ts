@@ -243,6 +243,11 @@ export async function updateProductMetadata(formData: FormData) {
   const engineeringRevision = String(formData.get("engineeringRevision") ?? "").trim();
   const workInstruction = String(formData.get("workInstruction") ?? "").trim();
   const finalInspectionPartNumber = String(formData.get("finalInspectionPartNumber") ?? "").trim();
+  const wiringDiagramNumber = String(formData.get("wiringDiagramNumber") ?? "").trim();
+  const wiringDiagramTitle = String(formData.get("wiringDiagramTitle") ?? "").trim();
+  const wiringDiagramFile = formData.get("wiringDiagramFile");
+  const hasWiringDiagramFile =
+    wiringDiagramFile instanceof File && wiringDiagramFile.size > 0;
 
   if (!productId || !partNumber || !description || !engineeringRevision) {
     redirect(
@@ -250,6 +255,58 @@ export async function updateProductMetadata(formData: FormData) {
         "Part number, description, and engineering revision are required.",
       )}`,
     );
+  }
+
+  if (hasWiringDiagramFile && !wiringDiagramNumber) {
+    redirect(
+      `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+        "Enter the AKT Wiring Diagram Part Number for the selected PDF.",
+      )}`,
+    );
+  }
+
+  if (!hasWiringDiagramFile && (wiringDiagramNumber || wiringDiagramTitle)) {
+    redirect(
+      `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+        "Choose an AKT Wiring Diagram PDF or clear the wiring diagram fields.",
+      )}`,
+    );
+  }
+
+  let wiringDiagramBytes: Uint8Array | null = null;
+  if (hasWiringDiagramFile) {
+    const normalizedType = wiringDiagramFile.type.trim().toLowerCase();
+    const allowedMime =
+      !normalizedType ||
+      normalizedType === "application/pdf" ||
+      normalizedType === "application/octet-stream";
+
+    if (!allowedMime || !wiringDiagramFile.name.toLowerCase().endsWith(".pdf")) {
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          "AKT Wiring Diagrams must be PDF files.",
+        )}`,
+      );
+    }
+
+    if (wiringDiagramFile.size > MAX_PUBLIC_PDF_UPLOAD_BYTES) {
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          "AKT Wiring Diagram PDFs must be 12 MB or smaller.",
+        )}`,
+      );
+    }
+
+    wiringDiagramBytes = new Uint8Array(await wiringDiagramFile.arrayBuffer());
+    if (
+      Buffer.from(wiringDiagramBytes.subarray(0, 5)).toString("ascii") !== "%PDF-"
+    ) {
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          "The selected AKT Wiring Diagram is not a valid PDF.",
+        )}`,
+      );
+    }
   }
 
   const supabase = await createClient();
@@ -268,6 +325,32 @@ export async function updateProductMetadata(formData: FormData) {
     redirect(
       `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(error.message)}`,
     );
+  }
+
+  if (hasWiringDiagramFile && wiringDiagramBytes) {
+    try {
+      await publishPublicAktWiringDiagram({
+        partNumber,
+        documentNumber: wiringDiagramNumber,
+        title: wiringDiagramTitle,
+        originalFileName: wiringDiagramFile.name,
+        bytes: wiringDiagramBytes,
+      });
+    } catch (uploadError) {
+      console.error(
+        "AKT Wiring Diagram upload failed after product metadata update.",
+        uploadError,
+      );
+      const message =
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Could not save the AKT Wiring Diagram to SERVER04.";
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          `Product details were updated, but the AKT Wiring Diagram was not uploaded: ${message}`,
+        )}`,
+      );
+    }
   }
 
   redirect(`/admin/products/${encodeURIComponent(productId)}?updated=1`);
