@@ -11,6 +11,7 @@ export default async function AktSpecificationPreview({
   params: Promise<{ partNumber: string; documentNumber: string }>;
 }) {
   const { partNumber, documentNumber } = await params;
+  const decodedDocumentNumber = decodeURIComponent(documentNumber);
   const product = await getProductReference(partNumber);
 
   if (
@@ -23,7 +24,7 @@ export default async function AktSpecificationPreview({
 
   const specifications = await listPublicAktSpecifications(product.part_number);
   const specification = specifications.find(
-    (candidate) => candidate.documentNumber === documentNumber,
+    (candidate) => candidate.documentNumber === decodedDocumentNumber,
   );
   if (!specification) notFound();
 
