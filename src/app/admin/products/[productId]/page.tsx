@@ -2,7 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { getControlledProduct } from "@/lib/data/revisions";
-import { listPublicAktWiringDiagrams } from "@/lib/public-pdf-documents";
+import {
+  listPublicAktSpecifications,
+  listPublicAktWiringDiagrams,
+} from "@/lib/public-pdf-documents";
 import { updateProductMetadata } from "../actions";
 
 function statusClass(status: string) {
@@ -24,6 +27,10 @@ export default async function ControlledProductPage({
   const query = await searchParams;
   const product = await getControlledProduct(productId);
   if (!product) notFound();
+
+  const aktSpecifications = product.current_approved_visual_revision
+    ? await listPublicAktSpecifications(product.part_number)
+    : [];
 
   const wiringDiagrams = product.current_approved_visual_revision
     ? await listPublicAktWiringDiagrams(product.part_number)
@@ -101,6 +108,45 @@ export default async function ControlledProductPage({
                 placeholder="0008-xxxxx"
               />
             </label>
+            <div className="note-box">
+              <strong>AKT SPECIFICATION — Optional</strong>
+              <div className="muted" style={{ marginTop: 6 }}>
+                {aktSpecifications.length > 0
+                  ? `Currently linked: ${aktSpecifications
+                      .map((specification) => specification.documentNumber)
+                      .join(", ")}`
+                  : "No released AKT specification is currently linked to this product."}
+              </div>
+            </div>
+            <label>
+              AKT Specification Document Number
+              <input
+                className="input"
+                name="aktDocumentNumber"
+                placeholder="0190-xxxxx-xxx"
+              />
+            </label>
+            <label>
+              AKT Specification Title
+              <input
+                className="input"
+                name="aktTitle"
+                placeholder="Rev. X Specification"
+              />
+            </label>
+            <label>
+              AKT Specification PDF
+              <input
+                className="input"
+                name="aktSpecificationFile"
+                type="file"
+                accept=".pdf,application/pdf"
+              />
+            </label>
+            <p className="muted">
+              To add an AKT Specification to this existing product, enter the document number and select the released PDF. PDF only, maximum 12 MB.
+            </p>
+
             <div className="note-box">
               <strong>AKT Wiring Diagram — Optional</strong>
               <div className="muted" style={{ marginTop: 6 }}>
