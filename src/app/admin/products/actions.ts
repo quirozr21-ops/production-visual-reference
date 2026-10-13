@@ -58,6 +58,56 @@ export async function createProduct(formData: FormData) {
     redirect("/admin/products/new?error=Choose%20a%20Revision%20Control%20Notice%20PDF%20or%20clear%20the%20Revision%20Control%20Notice%20fields.");
   }
 
+  if (hasAktFile && !aktDocumentNumber) {
+    redirect(
+      `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+        "Enter the AKT Specification Document Number for the selected PDF.",
+      )}`,
+    );
+  }
+
+  if (!hasAktFile && (aktDocumentNumber || aktTitle)) {
+    redirect(
+      `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+        "Choose an AKT Specification PDF or clear the AKT Specification fields.",
+      )}`,
+    );
+  }
+
+  let aktBytes: Uint8Array | null = null;
+  if (hasAktFile) {
+    const normalizedType = aktFile.type.trim().toLowerCase();
+    const allowedMime =
+      !normalizedType ||
+      normalizedType === "application/pdf" ||
+      normalizedType === "application/octet-stream";
+
+    if (!allowedMime || !aktFile.name.toLowerCase().endsWith(".pdf")) {
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          "AKT Specifications must be PDF files.",
+        )}`,
+      );
+    }
+
+    if (aktFile.size > MAX_PUBLIC_PDF_UPLOAD_BYTES) {
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          "AKT Specification PDFs must be 12 MB or smaller.",
+        )}`,
+      );
+    }
+
+    aktBytes = new Uint8Array(await aktFile.arrayBuffer());
+    if (Buffer.from(aktBytes.subarray(0, 5)).toString("ascii") !== "%PDF-") {
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          "The selected AKT Specification is not a valid PDF.",
+        )}`,
+      );
+    }
+  }
+
   if (hasWiringDiagramFile && !wiringDiagramNumber) {
     redirect("/admin/products/new?error=Enter%20the%20AKT%20Wiring%20Diagram%20Part%20Number%20for%20the%20selected%20PDF.");
   }
@@ -240,6 +290,10 @@ export async function updateProductMetadata(formData: FormData) {
   const engineeringRevision = String(formData.get("engineeringRevision") ?? "").trim();
   const workInstruction = String(formData.get("workInstruction") ?? "").trim();
   const finalInspectionPartNumber = String(formData.get("finalInspectionPartNumber") ?? "").trim();
+  const aktDocumentNumber = String(formData.get("aktDocumentNumber") ?? "").trim();
+  const aktTitle = String(formData.get("aktTitle") ?? "").trim();
+  const aktFile = formData.get("aktSpecificationFile");
+  const hasAktFile = aktFile instanceof File && aktFile.size > 0;
   const wiringDiagramNumber = String(formData.get("wiringDiagramNumber") ?? "").trim();
   const wiringDiagramTitle = String(formData.get("wiringDiagramTitle") ?? "").trim();
   const wiringDiagramFile = formData.get("wiringDiagramFile");
@@ -315,6 +369,32 @@ export async function updateProductMetadata(formData: FormData) {
     redirect(
       `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(error.message)}`,
     );
+  }
+
+  if (hasAktFile && aktBytes) {
+    try {
+      await publishPublicAktSpecification({
+        partNumber,
+        documentNumber: aktDocumentNumber,
+        title: aktTitle,
+        originalFileName: aktFile.name,
+        bytes: aktBytes,
+      });
+    } catch (uploadError) {
+      console.error(
+        "AKT Specification upload failed after product metadata update.",
+        uploadError,
+      );
+      const message =
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Could not save the AKT Specification to SERVER04.";
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          `Product details were updated, but the AKT Specification was not uploaded: ${message}`,
+        )}`,
+      );
+    }
   }
 
   if (hasWiringDiagramFile && wiringDiagramBytes) {
