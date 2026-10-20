@@ -59,6 +59,27 @@ export default async function NewProductPage({
           </label>
 
           <div className="note-box">
+            <strong>Final Inspection PDF — Optional</strong>
+            <div className="muted" style={{ marginTop: 6 }}>
+              Save the Final Inspection part number by itself, or upload the released PDF now.
+              The PDF will be stored on SERVER04 and linked automatically to the public QR page.
+            </div>
+          </div>
+
+          <label>
+            Final Inspection PDF
+            <input
+              className="input"
+              name="finalInspectionFile"
+              type="file"
+              accept=".pdf,application/pdf"
+            />
+          </label>
+          <p className="muted">
+            PDF only, maximum 12 MB. Enter the Final Inspection Part Number when selecting a PDF.
+          </p>
+
+          <div className="note-box">
             <strong>AKT SPECIFICATION — Optional</strong>
             <div className="muted" style={{ marginTop: 6 }}>
               Upload one released engineering-specification PDF while creating this product.
