@@ -7,6 +7,7 @@ import {
   MAX_PUBLIC_PDF_UPLOAD_BYTES,
   publishPublicAktSpecification,
   publishPublicAktWiringDiagram,
+  publishPublicFinalInspection,
   publishPublicRevisionControlNotice,
 } from "@/lib/public-pdf-documents";
 import { createClient } from "@/lib/supabase/server";
@@ -23,6 +24,9 @@ export async function createProduct(formData: FormData) {
   const engineeringRevision = String(formData.get("engineeringRevision") ?? "").trim();
   const workInstruction = String(formData.get("workInstruction") ?? "").trim();
   const finalInspectionPartNumber = String(formData.get("finalInspectionPartNumber") ?? "").trim();
+  const finalInspectionFile = formData.get("finalInspectionFile");
+  const hasFinalInspectionFile =
+    finalInspectionFile instanceof File && finalInspectionFile.size > 0;
   const aktDocumentNumber = String(formData.get("aktDocumentNumber") ?? "").trim();
   const aktTitle = String(formData.get("aktTitle") ?? "").trim();
   const aktFile = formData.get("aktSpecificationFile");
@@ -40,6 +44,34 @@ export async function createProduct(formData: FormData) {
 
   if (!partNumber || !description || !engineeringRevision) {
     redirect("/admin/products/new?error=Part%20number%2C%20description%2C%20and%20engineering%20revision%20are%20required.");
+  }
+
+  if (hasFinalInspectionFile && !finalInspectionPartNumber) {
+    redirect("/admin/products/new?error=Enter%20the%20Final%20Inspection%20Part%20Number%20for%20the%20selected%20PDF.");
+  }
+
+  let finalInspectionBytes: Uint8Array | null = null;
+  if (hasFinalInspectionFile) {
+    const normalizedType = finalInspectionFile.type.trim().toLowerCase();
+    const allowedMime =
+      !normalizedType ||
+      normalizedType === "application/pdf" ||
+      normalizedType === "application/octet-stream";
+
+    if (!allowedMime || !finalInspectionFile.name.toLowerCase().endsWith(".pdf")) {
+      redirect("/admin/products/new?error=Final%20Inspection%20documents%20must%20be%20PDF%20files.");
+    }
+
+    if (finalInspectionFile.size > MAX_PUBLIC_PDF_UPLOAD_BYTES) {
+      redirect("/admin/products/new?error=Final%20Inspection%20PDFs%20must%20be%2012%20MB%20or%20smaller.");
+    }
+
+    finalInspectionBytes = new Uint8Array(await finalInspectionFile.arrayBuffer());
+    if (
+      Buffer.from(finalInspectionBytes.subarray(0, 5)).toString("ascii") !== "%PDF-"
+    ) {
+      redirect("/admin/products/new?error=The%20selected%20Final%20Inspection%20document%20is%20not%20a%20valid%20PDF.");
+    }
   }
 
   if (hasAktFile && !aktDocumentNumber) {
@@ -149,6 +181,27 @@ export async function createProduct(formData: FormData) {
 
   if (error || !product) {
     redirect(`/admin/products/new?error=${encodeURIComponent(error?.message ?? "Unable to create product.")}`);
+  }
+
+  if (hasFinalInspectionFile && finalInspectionBytes) {
+    try {
+      await publishPublicFinalInspection({
+        documentNumber: finalInspectionPartNumber,
+        originalFileName: finalInspectionFile.name,
+        bytes: finalInspectionBytes,
+      });
+    } catch (uploadError) {
+      console.error("Final Inspection upload failed after product creation.", uploadError);
+      const message =
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Could not save the Final Inspection PDF to SERVER04.";
+      redirect(
+        `/admin/products/${encodeURIComponent(product.id)}?error=${encodeURIComponent(
+          `Product created, but the Final Inspection PDF was not uploaded: ${message}`,
+        )}`,
+      );
+    }
   }
 
   if (hasAktFile && aktBytes) {
