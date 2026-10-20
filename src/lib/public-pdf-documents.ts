@@ -111,6 +111,92 @@ export async function findPublicPdf(kind: PublicPdfKind, documentNumber: string)
   }
 }
 
+async function publishSimplePublicPdf({
+  kind,
+  documentNumber,
+  originalFileName,
+  bytes,
+  defaultFileName,
+  defaultDocumentName,
+}: {
+  kind: PublicPdfKind;
+  documentNumber: string;
+  originalFileName: string;
+  bytes: Uint8Array;
+  defaultFileName: string;
+  defaultDocumentName: string;
+}) {
+  const root = approvedPdfRoot();
+  if (!root) {
+    throw new Error("PUBLIC_APPROVED_DOCUMENTS_ROOT is not configured.");
+  }
+
+  const number = documentNumber.trim();
+  if (!number) {
+    throw new Error(`${defaultDocumentName} number is required.`);
+  }
+  if (bytes.length < 5 || bytes.length > MAX_PUBLIC_PDF_UPLOAD_BYTES) {
+    throw new Error(`${defaultDocumentName} PDFs must be 12 MB or smaller.`);
+  }
+  if (Buffer.from(bytes.subarray(0, 5)).toString("ascii") !== "%PDF-") {
+    throw new Error(`The selected ${defaultDocumentName} is not a valid PDF.`);
+  }
+
+  const directory = resolve(root);
+  const index = await readPublicPdfIndex(directory);
+  const documentIndex = index[kind] ?? {};
+
+  if (typeof documentIndex[number] === "string") {
+    throw new Error(`${defaultDocumentName} ${number} is already linked.`);
+  }
+
+  const safeDocumentNumber = safePathSegment(number, defaultFileName);
+  const safeOriginalName = safePathSegment(originalFileName, `${defaultFileName}.pdf`);
+  const pdfName = safeOriginalName.toLowerCase().endsWith(".pdf")
+    ? safeOriginalName
+    : `${safeOriginalName}.pdf`;
+  const storedFileName = `${safeDocumentNumber}-${randomUUID().slice(0, 8)}-${pdfName}`;
+  const relativeFile = `${kind}/${storedFileName}`;
+  const destination = resolve(directory, ...relativeFile.split("/"));
+
+  if (!isWithinFolder(directory, destination)) {
+    throw new Error(`Invalid ${defaultDocumentName} storage path.`);
+  }
+
+  await mkdir(dirname(destination), { recursive: true });
+  await writeFile(destination, bytes, { flag: "wx" });
+
+  try {
+    documentIndex[number] = relativeFile;
+    index[kind] = documentIndex;
+    await writePublicPdfIndex(directory, index);
+  } catch (error) {
+    await rm(destination, { force: true });
+    throw error;
+  }
+
+  return relativeFile;
+}
+
+export async function publishPublicFinalInspection({
+  documentNumber,
+  originalFileName,
+  bytes,
+}: {
+  documentNumber: string;
+  originalFileName: string;
+  bytes: Uint8Array;
+}) {
+  return publishSimplePublicPdf({
+    kind: "final-inspection",
+    documentNumber,
+    originalFileName,
+    bytes,
+    defaultFileName: "final-inspection",
+    defaultDocumentName: "Final Inspection",
+  });
+}
+
 async function listProductDocuments(
   kind: "akt-specification" | "revision-control-notice" | "akt-wiring-diagram",
   partNumber: string,
