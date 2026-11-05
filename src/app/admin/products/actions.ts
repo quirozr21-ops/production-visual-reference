@@ -293,6 +293,11 @@ export async function updateProductMetadata(formData: FormData) {
   const engineeringRevision = String(formData.get("engineeringRevision") ?? "").trim();
   const workInstruction = String(formData.get("workInstruction") ?? "").trim();
   const finalInspectionPartNumber = String(formData.get("finalInspectionPartNumber") ?? "").trim();
+  const revisionNoticeNumber = String(formData.get("revisionNoticeNumber") ?? "").trim();
+  const revisionNoticeTitle = String(formData.get("revisionNoticeTitle") ?? "").trim();
+  const revisionNoticeFile = formData.get("revisionNoticeFile");
+  const hasRevisionNoticeFile =
+    revisionNoticeFile instanceof File && revisionNoticeFile.size > 0;
   const aktDocumentNumber = String(formData.get("aktDocumentNumber") ?? "").trim();
   const aktTitle = String(formData.get("aktTitle") ?? "").trim();
   const aktFile = formData.get("aktSpecificationFile");
@@ -309,6 +314,58 @@ export async function updateProductMetadata(formData: FormData) {
         "Part number, description, and engineering revision are required.",
       )}`,
     );
+  }
+
+  if (hasRevisionNoticeFile && !revisionNoticeNumber) {
+    redirect(
+      `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+        "Enter the Revision Control Notice Number for the selected PDF.",
+      )}`,
+    );
+  }
+
+  if (!hasRevisionNoticeFile && (revisionNoticeNumber || revisionNoticeTitle)) {
+    redirect(
+      `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+        "Choose a Revision Control Notice PDF or clear the Revision Control Notice fields.",
+      )}`,
+    );
+  }
+
+  let revisionNoticeBytes: Uint8Array | null = null;
+  if (hasRevisionNoticeFile) {
+    const normalizedType = revisionNoticeFile.type.trim().toLowerCase();
+    const allowedMime =
+      !normalizedType ||
+      normalizedType === "application/pdf" ||
+      normalizedType === "application/octet-stream";
+
+    if (!allowedMime || !revisionNoticeFile.name.toLowerCase().endsWith(".pdf")) {
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          "Revision Control Notices must be PDF files.",
+        )}`,
+      );
+    }
+
+    if (revisionNoticeFile.size > MAX_PUBLIC_PDF_UPLOAD_BYTES) {
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          "Revision Control Notice PDFs must be 12 MB or smaller.",
+        )}`,
+      );
+    }
+
+    revisionNoticeBytes = new Uint8Array(await revisionNoticeFile.arrayBuffer());
+    if (
+      Buffer.from(revisionNoticeBytes.subarray(0, 5)).toString("ascii") !== "%PDF-"
+    ) {
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          "The selected Revision Control Notice is not a valid PDF.",
+        )}`,
+      );
+    }
   }
 
   if (hasAktFile && !aktDocumentNumber) {
@@ -445,6 +502,32 @@ export async function updateProductMetadata(formData: FormData) {
       redirect(
         `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
           `Product details were updated, but the AKT Specification was not uploaded: ${message}`,
+        )}`,
+      );
+    }
+  }
+
+  if (hasRevisionNoticeFile && revisionNoticeBytes) {
+    try {
+      await publishPublicRevisionControlNotice({
+        partNumber,
+        documentNumber: revisionNoticeNumber,
+        title: revisionNoticeTitle,
+        originalFileName: revisionNoticeFile.name,
+        bytes: revisionNoticeBytes,
+      });
+    } catch (uploadError) {
+      console.error(
+        "Revision Control Notice upload failed after product metadata update.",
+        uploadError,
+      );
+      const message =
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Could not save the Revision Control Notice to SERVER04.";
+      redirect(
+        `/admin/products/${encodeURIComponent(productId)}?error=${encodeURIComponent(
+          `Product details were updated, but the Eagle Tech Revision Control Notice was not uploaded: ${message}`,
         )}`,
       );
     }
