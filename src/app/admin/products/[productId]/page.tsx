@@ -5,6 +5,7 @@ import { getControlledProduct } from "@/lib/data/revisions";
 import {
   listPublicAktSpecifications,
   listPublicAktWiringDiagrams,
+  listPublicRevisionControlNotices,
 } from "@/lib/public-pdf-documents";
 import { updateProductMetadata } from "../actions";
 
@@ -34,6 +35,10 @@ export default async function ControlledProductPage({
 
   const wiringDiagrams = product.current_approved_visual_revision
     ? await listPublicAktWiringDiagrams(product.part_number)
+    : [];
+
+  const revisionControlNotices = product.current_approved_visual_revision
+    ? await listPublicRevisionControlNotices(product.part_number)
     : [];
 
   const canAuthor = user.role === "engineering" || user.role === "administrator";
@@ -145,6 +150,45 @@ export default async function ControlledProductPage({
             </label>
             <p className="muted">
               To add an AKT Specification to this existing product, enter the document number and select the released PDF. PDF only, maximum 12 MB.
+            </p>
+
+            <div className="note-box">
+              <strong>Eagle Tech Revision Control Notice — Optional</strong>
+              <div className="muted" style={{ marginTop: 6 }}>
+                {revisionControlNotices.length > 0
+                  ? `Currently linked: ${revisionControlNotices
+                      .map((notice) => notice.documentNumber)
+                      .join(", ")}`
+                  : "No released Revision Control Notice is currently linked to this product."}
+              </div>
+            </div>
+            <label>
+              Revision Control Notice Number
+              <input
+                className="input"
+                name="revisionNoticeNumber"
+                placeholder="RCN-xxxxx"
+              />
+            </label>
+            <label>
+              Revision Control Notice Title
+              <input
+                className="input"
+                name="revisionNoticeTitle"
+                placeholder="Revision Control Notice"
+              />
+            </label>
+            <label>
+              Revision Control Notice PDF
+              <input
+                className="input"
+                name="revisionNoticeFile"
+                type="file"
+                accept=".pdf,application/pdf"
+              />
+            </label>
+            <p className="muted">
+              To add another released Revision Control Notice, enter its document number and select the PDF. PDF only, maximum 12 MB.
             </p>
 
             <div className="note-box">
